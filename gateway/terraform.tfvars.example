@@ -1,0 +1,19 @@
+# Stage 03 — API Gateway: exemplo de variaveis.
+# Copie para terraform.tfvars e preencha com os outputs das outras stories.
+
+# ARN da Lambda de autenticacao por CPF (repo oficina-auth-lambda — US-F3-01).
+# A mesma function atende o POST /auth e o Lambda Authorizer.
+auth_lambda_arn = "arn:aws:lambda:us-east-1:123456789012:function:oficina-auth-cpf"
+
+# Listener do ALB/NLB **interno** que expoe a aplicacao no EKS (US-F3-05/06)
+backend_listener_arn = "arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/k8s-oficina/50dc6c495c0c9188/f2f7dc8efc522ab2"
+
+# Rede da VPC do EKS para as ENIs do VPC Link (US-F3-05)
+vpc_link_subnet_ids         = ["subnet-0aaa1111bbb22222c", "subnet-0ddd3333eee44444f"]
+vpc_link_security_group_ids = ["sg-0123456789abcdef0"]
+
+# Opcionais (defaults em variables.tf)
+# aws_region             = "us-east-1"   # AWS Academy Learner Lab
+# throttling_rate_limit  = 20
+# throttling_burst_limit = 40
+# cors_allowed_origins   = ["https://admin.oficina.example.com", "https://cliente.oficina.example.com"]

@@ -1,0 +1,20 @@
+# Terraform — nunca versionar state, caches locais nem tfvars reais.
+**/.terraform/
+**/.terraform.tfstate.lock.info
+
+# State (contem segredos: senha do banco, DATABASE_URL)
+*.tfstate
+*.tfstate.*
+
+# Variaveis reais (mantem apenas os exemplos)
+*.tfvars
+!*.tfvars.example
+
+# Planos e logs
+*.tfplan
+crash.log
+crash.*.log
+
+# kubeconfig gerado, caso caia dentro do repo
+*.kubeconfig
+kubeconfig
