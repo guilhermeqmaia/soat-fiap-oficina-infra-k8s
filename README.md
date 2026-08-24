@@ -46,3 +46,10 @@ terraform init && terraform apply
 ```bash
 terraform -chdir=gateway fmt -check && terraform -chdir=gateway init -backend=false && terraform -chdir=gateway validate
 ```
+
+## Documentação
+
+- [docs/user-stories/](docs/user-stories/) — US-F3-02 (gateway), US-F3-05
+  (cluster EKS) e US-F3-10 (observabilidade de infra)
+- [docs/tech-challenges/fase-3-tech-challenge.pdf](docs/tech-challenges/fase-3-tech-challenge.pdf) — enunciado
+- [docs/qa-plans/](docs/qa-plans/) — planos de QA (gerados com a skill `/qa-plan`)
