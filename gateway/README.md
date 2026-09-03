@@ -57,8 +57,10 @@ sequenceDiagram
 
 ## Mapa de rotas
 
-Espelha os endpoints `@Public()` do monólito — tudo que não está listado cai no
-catch-all protegido.
+Espelha os endpoints `@Public()` do monólito — qualquer outro path com ao
+menos um segmento cai no catch-all protegido. Exceção: o path raiz (`GET /`)
+não casa com `{proxy+}` e recebe o 404 do próprio API Gateway — uptime checks
+devem apontar para `/health`, nunca para a raiz.
 
 | Rota | Destino | Proteção |
 |---|---|---|
