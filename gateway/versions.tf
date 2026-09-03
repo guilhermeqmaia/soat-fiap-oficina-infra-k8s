@@ -2,7 +2,9 @@
 # Mantido sem blocos `provider {}` (esses ficam em providers.tf) para que
 # `terraform validate` cheque apenas as constraints.
 terraform {
-  required_version = ">= 1.6"
+  # >= 1.9: as validations referenciam outras variaveis (checagem cruzada de
+  # regiao do ARN x aws_region).
+  required_version = ">= 1.9"
 
   required_providers {
     aws = {

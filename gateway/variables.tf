@@ -20,6 +20,13 @@ variable "auth_lambda_arn" {
     condition     = startswith(var.auth_lambda_arn, "arn:aws:lambda:")
     error_message = "auth_lambda_arn deve ser um ARN de function Lambda (arn:aws:lambda:...)."
   }
+
+  # Regiao do ARN precisa bater com var.aws_region: um tfvars colado de outro
+  # ambiente passaria no plan e so falharia em runtime (500 no authorizer).
+  validation {
+    condition     = split(":", var.auth_lambda_arn)[3] == var.aws_region
+    error_message = "A regiao do auth_lambda_arn difere de aws_region — o authorizer falharia em runtime."
+  }
 }
 
 variable "backend_listener_arn" {
@@ -30,15 +37,22 @@ variable "backend_listener_arn" {
     condition     = startswith(var.backend_listener_arn, "arn:aws:elasticloadbalancing:")
     error_message = "backend_listener_arn deve ser um ARN de listener de ELB (arn:aws:elasticloadbalancing:...)."
   }
+
+  validation {
+    condition     = split(":", var.backend_listener_arn)[3] == var.aws_region
+    error_message = "A regiao do backend_listener_arn difere de aws_region."
+  }
 }
 
 variable "vpc_link_subnet_ids" {
-  description = "Subnets (privadas) da VPC do EKS onde o VPC Link cria suas ENIs (US-F3-05)."
+  description = "Subnets (privadas) da VPC do EKS onde o VPC Link cria suas ENIs (US-F3-05). Minimo 2, em AZs distintas, cobrindo as AZs do ALB interno."
   type        = list(string)
 
+  # 1 subnet = trafego cross-AZ pago + API inteira cai junto com a AZ,
+  # contrariando o requisito de HA multi-AZ do plano da Fase 3.
   validation {
-    condition     = length(var.vpc_link_subnet_ids) > 0
-    error_message = "Informe ao menos uma subnet para o VPC Link."
+    condition     = length(var.vpc_link_subnet_ids) >= 2
+    error_message = "Informe ao menos 2 subnets (AZs distintas) para o VPC Link — requisito de HA multi-AZ."
   }
 }
 
