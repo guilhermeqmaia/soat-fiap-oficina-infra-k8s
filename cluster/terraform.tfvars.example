@@ -1,0 +1,13 @@
+# Copie para terraform.tfvars e preencha.
+
+# AWS Academy: a LabRole assume o papel de role do cluster e dos nodes.
+lab_role_arn = "arn:aws:iam::123456789012:role/LabRole"
+
+# Opcionais (defaults em variables.tf)
+# aws_region          = "us-east-1"
+# kubernetes_version  = "1.31"
+# vpc_cidr            = "10.0.0.0/16"
+# node_instance_types = ["t3.medium"]
+# node_desired_size   = 2
+# node_min_size       = 2
+# node_max_size       = 4
