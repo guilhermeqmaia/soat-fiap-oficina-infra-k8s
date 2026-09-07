@@ -1,0 +1,121 @@
+name: CD - Terraform apply
+
+# Deploy automatico da infraestrutura: push em `homolog` aplica no ambiente de
+# homologacao; push em `main` aplica em producao (branch protegida — o apply so
+# acontece depois do PR aprovado/mergeado). Ordem: cluster -> gateway.
+
+on:
+  push:
+    branches: [main, homolog]
+    paths:
+      - 'cluster/**'
+      - 'gateway/**'
+      - '.github/workflows/cd.yml'
+      - '.github/scripts/write-tfvars.sh'
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Acao do Terraform
+        type: choice
+        options: [plan, apply, destroy]
+        default: plan
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: terraform-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  # Mapeamento branch -> ambiente resolvido UMA vez (evita o ternario repetido
+  # apontado no code review do repo da Lambda).
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      env_name: ${{ steps.map.outputs.env_name }}
+      tf_env: ${{ steps.map.outputs.tf_env }}
+    steps:
+      - id: map
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo 'env_name=production' >> "$GITHUB_OUTPUT"
+            echo 'tf_env=prod' >> "$GITHUB_OUTPUT"
+          else
+            echo 'env_name=homolog' >> "$GITHUB_OUTPUT"
+            echo 'tf_env=homolog' >> "$GITHUB_OUTPUT"
+          fi
+
+  apply:
+    needs: resolve
+    runs-on: ubuntu-latest
+    environment: ${{ needs.resolve.outputs.env_name }}
+    strategy:
+      max-parallel: 1 # cluster antes de gateway (gateway consome a rede)
+      matrix:
+        stage: [cluster, gateway]
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      TF_ENV: ${{ needs.resolve.outputs.tf_env }}
+      TF_ACTION: ${{ inputs.action || 'apply' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pre-requisitos deste stage existem?
+        id: guard
+        run: |
+          ok=true
+          { [ -n "${{ secrets.AWS_ROLE_ARN }}" ] || [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; } || ok=false
+          [ -n "${{ secrets.TF_STATE_BUCKET }}" ] || ok=false
+          if [ "${{ matrix.stage }}" = "cluster" ]; then
+            [ -n "${{ vars.LAB_ROLE_ARN }}" ] || ok=false
+          else
+            [ -n "${{ vars.AUTH_LAMBDA_ARN }}" ] && [ -n "${{ vars.BACKEND_LISTENER_ARN }}" ] \
+              && [ -n "${{ vars.VPC_LINK_SUBNET_IDS }}" ] && [ -n "${{ vars.VPC_LINK_SECURITY_GROUP_IDS }}" ] || ok=false
+          fi
+          echo "configured=$ok" >> "$GITHUB_OUTPUT"
+          [ "$ok" = true ] || echo "::warning::Apply de ${{ matrix.stage }} IGNORADO — configure secrets/vars (README secao CI/CD). O run fica verde, mas nada foi aplicado."
+
+      - name: Credenciais AWS
+        if: steps.guard.outputs.configured == 'true'
+        uses: ./.github/actions/aws-credentials
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+
+      - uses: hashicorp/setup-terraform@v3
+        if: steps.guard.outputs.configured == 'true'
+        with:
+          terraform_version: 1.9.8
+
+      - name: terraform ${{ env.TF_ACTION }} (${{ matrix.stage }} @ ${{ env.TF_ENV }})
+        if: steps.guard.outputs.configured == 'true'
+        working-directory: ${{ matrix.stage }}
+        run: |
+          printf 'terraform {\n  backend "s3" {}\n}\n' > backend_override.tf
+          terraform init -input=false \
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -backend-config="key=oficina-infra-k8s/${{ matrix.stage }}/${TF_ENV}.tfstate" \
+            -backend-config="region=${AWS_REGION}" \
+            -backend-config="encrypt=true"
+          bash ../.github/scripts/write-tfvars.sh ${{ matrix.stage }} ci.auto.tfvars
+          case "$TF_ACTION" in
+            plan)    terraform plan -input=false ;;
+            apply)   terraform apply -input=false -auto-approve ;;
+            destroy) terraform destroy -input=false -auto-approve ;;
+          esac
+        env:
+          LAB_ROLE_ARN: ${{ vars.LAB_ROLE_ARN }}
+          AUTH_LAMBDA_ARN: ${{ vars.AUTH_LAMBDA_ARN }}
+          BACKEND_LISTENER_ARN: ${{ vars.BACKEND_LISTENER_ARN }}
+          VPC_LINK_SUBNET_IDS: ${{ vars.VPC_LINK_SUBNET_IDS }}
+          VPC_LINK_SECURITY_GROUP_IDS: ${{ vars.VPC_LINK_SECURITY_GROUP_IDS }}
+
+      - name: Outputs do stage
+        if: steps.guard.outputs.configured == 'true' && env.TF_ACTION == 'apply'
+        working-directory: ${{ matrix.stage }}
+        run: terraform output >> "$GITHUB_STEP_SUMMARY" || true
