@@ -52,6 +52,26 @@ done
 Ordem de apply: **`cluster/` → `gateway/`** (o gateway consome subnets/SG do
 cluster e o listener do NLB interno criado pelo deploy do app — US-F3-06).
 
+## CI/CD (US-F3-08)
+
+| Workflow | Quando | O que faz |
+|---|---|---|
+| [`ci.yml`](.github/workflows/ci.yml) | PR e push | `fmt -check` + `validate` dos stages; **`terraform plan` comentado no PR** (quando há credenciais) |
+| [`cd.yml`](.github/workflows/cd.yml) | push em `homolog`/`main` | `apply` automático — `homolog` → homologação, `main` → produção; ordem `cluster` → `gateway` |
+
+Estado remoto: S3 (`TF_STATE_BUCKET`), chave `oficina-infra-k8s/<stage>/<env>.tfstate`
+— injetado por *override file* só no CI (local continua com state local).
+
+**Secrets** (por ambiente ou repo): `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
+`AWS_SESSION_TOKEN` (Academy — renovar por sessão do lab), `TF_STATE_BUCKET`
+(ou `AWS_ROLE_ARN` para OIDC em conta própria).
+**Vars**: `LAB_ROLE_ARN` (cluster); `AUTH_LAMBDA_ARN`, `BACKEND_LISTENER_ARN`,
+`VPC_LINK_SUBNET_IDS`, `VPC_LINK_SECURITY_GROUP_IDS` (gateway — outputs das
+US-F3-01/05/06). Sem eles o apply do stage é **ignorado com aviso** (não falha).
+
+**Deploy ativo:** URL pública do gateway = output `api_base_url` do stage
+`gateway/` (aparece no summary do run de CD). <!-- atualizar com a URL após o primeiro apply -->
+
 ## Documentação
 
 - [docs/user-stories/](docs/user-stories/) — US-F3-02 (gateway), US-F3-05
