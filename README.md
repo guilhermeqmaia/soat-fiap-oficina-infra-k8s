@@ -16,7 +16,7 @@ EKS**. Repositório **2/4** da solução.
 | Diretório | História | Conteúdo |
 |---|---|---|
 | [`gateway/`](gateway/) | US-F3-02 | AWS API Gateway (HTTP API): rota `/auth` na Lambda, Lambda Authorizer de JWT, VPC Link para o ALB interno do EKS, throttling, CORS e access logs |
-| `cluster/` *(em breve)* | US-F3-05 | VPC, cluster EKS, node groups, add-ons (metrics-server, AWS LB Controller), IRSA |
+| [`cluster/`](cluster/) | US-F3-05 | VPC multi-AZ, cluster EKS + managed node group (LabRole), add-ons (`metrics-server` p/ HPA), SG do VPC Link |
 
 ## Credenciais e segredos
 
@@ -44,8 +44,13 @@ terraform init && terraform apply
 ## Qualidade
 
 ```bash
-terraform -chdir=gateway fmt -check && terraform -chdir=gateway init -backend=false && terraform -chdir=gateway validate
+for stage in gateway cluster; do
+  terraform -chdir=$stage fmt -check && terraform -chdir=$stage init -backend=false && terraform -chdir=$stage validate
+done
 ```
+
+Ordem de apply: **`cluster/` → `gateway/`** (o gateway consome subnets/SG do
+cluster e o listener do NLB interno criado pelo deploy do app — US-F3-06).
 
 ## Documentação
 

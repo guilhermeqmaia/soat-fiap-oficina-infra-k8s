@@ -1,0 +1,70 @@
+# Stage cluster — EKS: variaveis de entrada.
+
+variable "aws_region" {
+  description = "Regiao AWS. O Learner Lab da AWS Academy opera em us-east-1."
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "project_name" {
+  description = "Prefixo de nomes."
+  type        = string
+  default     = "oficina-mecanica"
+}
+
+variable "lab_role_arn" {
+  description = "ARN da LabRole do AWS Academy — usada como role do cluster E do node group (o lab nao permite criar IAM roles)."
+  type        = string
+
+  validation {
+    condition     = startswith(var.lab_role_arn, "arn:aws:iam:")
+    error_message = "lab_role_arn deve ser um ARN de IAM role (arn:aws:iam::<conta>:role/LabRole)."
+  }
+}
+
+variable "kubernetes_version" {
+  description = "Versao do Kubernetes do EKS."
+  type        = string
+  default     = "1.31"
+}
+
+variable "vpc_cidr" {
+  description = "CIDR da VPC. Subnets /20 sao derivadas dele (2 publicas + 2 privadas)."
+  type        = string
+  default     = "10.0.0.0/16"
+}
+
+variable "node_instance_types" {
+  description = "Tipos de instancia do managed node group."
+  type        = list(string)
+  default     = ["t3.medium"]
+}
+
+variable "node_desired_size" {
+  description = "Nodes desejados. O HPA escala PODS; nodes escalam pelo scaling_config."
+  type        = number
+  default     = 2
+}
+
+variable "node_min_size" {
+  description = "Minimo de nodes (>= 2 para HA multi-AZ)."
+  type        = number
+  default     = 2
+
+  validation {
+    condition     = var.node_min_size >= 2
+    error_message = "node_min_size deve ser >= 2 — HA multi-AZ prometida no plano da Fase 3."
+  }
+}
+
+variable "node_max_size" {
+  description = "Maximo de nodes."
+  type        = number
+  default     = 4
+}
+
+variable "log_retention_days" {
+  description = "Retencao do log group do control plane."
+  type        = number
+  default     = 7
+}
