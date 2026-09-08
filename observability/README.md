@@ -49,6 +49,37 @@ trial — métricas 15 meses, logs 15 dias, traces 15 dias. O
 `kube-prometheus-stack` usa retenção de **7 dias** (`prometheus-values.yaml`),
 suficiente para o período de avaliação e sem custo.
 
+## Dashboards e alertas (US-F3-11)
+
+Versionados como código em [`dashboards.tf`](dashboards.tf) e
+[`monitors.tf`](monitors.tf) — aplicados junto com o resto do stage.
+
+### Dashboards
+
+| Painel | Conteúdo | Exigido por |
+|---|---|---|
+| **Oficina — Operação (negócio)** | volume diário de OS por status · tempo médio por status (p50/p95) · erros de integração · taxa de sucesso das integrações | enunciado |
+| **Oficina — Saúde técnica** | latência p95/p99 por rota (com marcador do SLO) · taxa de 5xx · CPU/memória dos pods · réplicas (efeito do HPA) · latência e erros do API Gateway | US-F3-10 |
+
+As URLs saem nos outputs `dashboard_negocio_url` / `dashboard_tecnico_url` —
+é o que se abre na análise ao vivo do vídeo (US-F3-12).
+
+### Alertas
+
+| Alerta | Dispara quando | Severidade |
+|---|---|---|
+| **Falha no processamento de OS** | > 5 respostas 5xx em rotas `/ordens-servico` em 15 min | crítico |
+| Falhas na entrega de notificações | > 3 falhas de webhook em 30 min | aviso |
+| Latência acima do SLO | p95 > 500 ms por 10 min | aviso |
+| CPU dos pods > 85% | 10 min | aviso |
+| Pods em CrashLoopBackOff | > 5 restarts em 10 min | crítico |
+| API pública fora do ar | monitor sintético de `/health` falhando | crítico |
+
+Cada monitor traz na mensagem **o que significa** e um **runbook** de 2–3
+passos — o alerta chega acionável, não como um "algo quebrou". O canal de
+notificação é a var `alert_email` (vira `@email` na mensagem do Datadog);
+para Slack, use `@slack-<canal>` com a integração instalada.
+
 ## Monitores sintéticos
 
 [`synthetics.tf`](synthetics.tf) provisiona checks de uptime batendo no
