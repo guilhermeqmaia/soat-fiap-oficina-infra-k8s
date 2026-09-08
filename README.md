@@ -16,6 +16,7 @@ EKS**. Repositório **2/4** da solução.
 | Diretório | História | Conteúdo |
 |---|---|---|
 | [`gateway/`](gateway/) | US-F3-02 | AWS API Gateway (HTTP API): rota `/auth` na Lambda, Lambda Authorizer de JWT, VPC Link para o ALB interno do EKS, throttling, CORS e access logs |
+| [`observability/`](observability/README.md) | US-F3-10 | Agente Datadog (Helm values), alternativa OSS Prometheus/Grafana e monitores sintéticos de uptime (Terraform) |
 | [`cluster/`](cluster/) | US-F3-05 | VPC multi-AZ, cluster EKS + managed node group (LabRole), add-ons (`metrics-server` p/ HPA), SG do VPC Link |
 
 ## Credenciais e segredos

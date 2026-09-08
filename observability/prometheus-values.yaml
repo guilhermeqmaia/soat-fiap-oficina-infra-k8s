@@ -1,0 +1,32 @@
+# Alternativa OSS (ADR-0004): kube-prometheus-stack.
+# Usada se o trial do Datadog expirar antes da entrega — os SINAIS sao os
+# mesmos, porque a aplicacao expoe /metrics em formato OpenMetrics.
+#
+#   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+#   helm upgrade --install obs prometheus-community/kube-prometheus-stack \
+#     -n observability --create-namespace -f observability/prometheus-values.yaml
+grafana:
+  enabled: true
+  adminPassword: "" # defina via --set ou secret; nunca commitar
+
+prometheus:
+  prometheusSpec:
+    retention: 7d
+    # Descobre o Service da aplicacao pelo annotation padrao de scrape.
+    additionalScrapeConfigs:
+      - job_name: oficina-app
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names: [oficina]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_name]
+            action: keep
+            regex: oficina-app
+          - source_labels: [__meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: http
+        metrics_path: /metrics
+
+# CPU/memoria por pod e node ja vem do kube-state-metrics + node-exporter
+# incluidos no chart.
