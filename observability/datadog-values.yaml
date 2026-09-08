@@ -1,0 +1,53 @@
+# Datadog Agent no EKS (US-F3-10) — plataforma primaria escolhida na ADR-0004.
+#
+#   helm repo add datadog https://helm.datadoghq.com && helm repo update
+#   kubectl -n datadog create secret generic datadog-secret \
+#     --from-literal=api-key=<DD_API_KEY>
+#   helm upgrade --install datadog datadog/datadog \
+#     -n datadog --create-namespace -f observability/datadog-values.yaml
+#
+# Sem IRSA (AWS Academy nao permite OIDC): a API key vem de um Secret do
+# cluster, nao de uma role.
+datadog:
+  site: datadoghq.com
+  apiKeyExistingSecret: datadog-secret
+  clusterName: oficina-mecanica-eks
+
+  # --- Metricas de infra do Kubernetes: CPU/memoria por pod e por node ---
+  kubeStateMetricsEnabled: true
+  kubeStateMetricsCore:
+    enabled: true
+
+  # --- APM: recebe os traces do dd-trace da aplicacao (DD_TRACE_ENABLED=true) ---
+  apm:
+    portEnabled: true
+    socketEnabled: true
+
+  # --- Logs: correlacionados aos traces por trace_id (logInjection no app) ---
+  logs:
+    enabled: true
+    containerCollectAll: true
+
+  processAgent:
+    enabled: true
+
+  # --- Scrape do /metrics da aplicacao (OpenMetrics) ---
+  # Mesmo endpoint que um Prometheus consumiria: a escolha de fornecedor nao
+  # muda a instrumentacao (ADR-0004).
+  prometheusScrape:
+    enabled: true
+    serviceEndpoints: true
+
+clusterAgent:
+  enabled: true
+  metricsProvider:
+    # Permite HPA por metrica customizada no futuro; o HPA atual usa CPU/memoria
+    # do metrics-server (ADR-0002).
+    enabled: false
+
+agents:
+  containers:
+    agent:
+      resources:
+        requests: { cpu: 100m, memory: 256Mi }
+        limits: { cpu: 400m, memory: 512Mi }
