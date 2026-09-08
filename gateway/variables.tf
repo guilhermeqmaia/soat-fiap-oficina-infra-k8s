@@ -62,15 +62,15 @@ variable "vpc_link_security_group_ids" {
 }
 
 variable "throttling_rate_limit" {
-  description = "Limite sustentado de requisicoes/segundo por rota (throttling do stage)."
+  description = "Limite sustentado de requisicoes/segundo por rota (throttling do stage). O default cobre a demo e os testes de carga da suite perf/ (que roda ate ~300 rps quando apontada ao gateway); reduza em producao real se quiser um teto mais conservador."
   type        = number
-  default     = 20
+  default     = 400
 }
 
 variable "throttling_burst_limit" {
   description = "Pico (burst) de requisicoes permitido por rota (throttling do stage)."
   type        = number
-  default     = 40
+  default     = 800
 }
 
 variable "cors_allowed_origins" {

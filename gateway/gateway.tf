@@ -12,8 +12,14 @@ resource "aws_apigatewayv2_api" "this" {
   cors_configuration {
     allow_origins = var.cors_allowed_origins
     allow_methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-    allow_headers = ["authorization", "content-type"]
-    max_age       = 3600
+    # Alem de authorization/content-type:
+    #   x-webhook-token  -> guard do webhook de aprovacao de orcamento (US-F2-02)
+    #   x-correlation-id -> correlacao de requisicoes ponta a ponta (US-F3-09)
+    allow_headers = ["authorization", "content-type", "x-webhook-token", "x-correlation-id", "x-request-id"]
+    # Sem expose_headers o browser nao consegue LER o correlation id da
+    # resposta — inviabiliza ligar um erro reportado na UI ao trace no backend.
+    expose_headers = ["x-correlation-id", "x-request-id"]
+    max_age        = 86400
   }
 }
 
