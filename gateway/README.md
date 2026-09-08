@@ -100,8 +100,8 @@ terraform output -raw api_base_url
 
 | Item | Default | Variável |
 |---|---|---|
-| Throttling | 20 rps / burst 40 (todas as rotas) | `throttling_rate_limit` / `throttling_burst_limit` |
-| CORS | `*` (demo) | `cors_allowed_origins` |
+| Throttling | 400 rps / burst 800 (todas as rotas) | `throttling_rate_limit` / `throttling_burst_limit` |
+| CORS | `*` (demo); headers `authorization`, `content-type`, `x-webhook-token`, `x-correlation-id` | `cors_allowed_origins` |
 | Cache do authorizer | 300 s por header `Authorization` | `authorizer_cache_ttl_seconds` |
 | Access logs | JSON em `/aws/apigateway/oficina-mecanica-gateway`, 7 dias | `log_retention_days` |
 
