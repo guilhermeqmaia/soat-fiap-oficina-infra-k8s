@@ -11,6 +11,27 @@ EKS**. Repositório **2/4** da solução.
 | 3 | [soat-fiap-oficina-infra-db](https://github.com/guilhermeqmaia/soat-fiap-oficina-infra-db) | Terraform do banco gerenciado (RDS PostgreSQL) |
 | 4 | [soat-fiap-oficina-mecanica-app](https://github.com/guilhermeqmaia/soat-fiap-oficina-mecanica-app) | Aplicação NestJS + manifestos K8s + docs |
 
+## Onde este repositório entra
+
+```mermaid
+flowchart LR
+    C["Cliente / Staff"] --> GW["**API Gateway + EKS**<br/>(este repo)"]
+    GW -->|POST /auth| L["Lambda de CPF<br/>(repo 1)"]
+    GW -->|VPC Link| APP["Aplicação NestJS<br/>(repo 4)"]
+    APP --> DB[("RDS PostgreSQL<br/>(repo 3)")]
+    L --> DB
+    style GW fill:#e3f2fd,stroke:#1565c0,stroke-width:3px
+```
+
+**Papel deste repositório:** API Gateway, cluster EKS (com HPA e metrics-server) e a stack de observabilidade — agentes, dashboards e alertas.
+
+| Repositório | Papel |
+|---|---|
+| [1 · auth-lambda](https://github.com/guilhermeqmaia/soat-fiap-oficina-auth-lambda) | emite o JWT (CPF) e valida no gateway |
+| **2 · este repo** | **API Gateway, cluster EKS e observabilidade** |
+| [3 · infra-db](https://github.com/guilhermeqmaia/soat-fiap-oficina-infra-db) | RDS PostgreSQL gerenciado |
+| [4 · mecanica-app](https://github.com/guilhermeqmaia/soat-fiap-oficina-mecanica-app) | API NestJS, manifestos K8s e documentação |
+
 ## Estrutura
 
 | Diretório | História | Conteúdo |
