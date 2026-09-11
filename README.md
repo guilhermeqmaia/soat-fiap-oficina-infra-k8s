@@ -51,9 +51,34 @@ Regras deste e dos demais repositórios da solução:
 - Credenciais de nuvem entram **somente via GitHub Actions Secrets** do
   repositório: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` e
   `AWS_SESSION_TOKEN` (AWS Academy Learner Lab — o token de sessão expira a
-  cada sessão do lab e precisa ser atualizado: `gh secret set AWS_SESSION_TOKEN`).
+  cada sessão do lab; ver [rotação abaixo](#aws-academy-learner-lab-credenciais-por-sessão)).
 - Segredos de runtime (ex.: segredo de assinatura do JWT) vivem no **AWS
   Secrets Manager**, nunca em variável de ambiente commitada.
+
+## AWS Academy Learner Lab (credenciais por sessão)
+
+O lab entrega chaves temporárias novas a cada **Start Lab** (~4h). Como os
+4 repos deployam via GitHub Actions, os secrets precisam ser rotacionados a
+cada sessão — os scripts em [`scripts/`](scripts/) fazem isso pela CLI
+(`gh` autenticado + `aws` CLI):
+
+```bash
+# uma vez: bucket S3 do state + tabela de lock + secrets/vars estáveis nos 4 repos
+scripts/aws-academy-bootstrap.sh
+
+# toda sessão do lab: AWS Details -> "AWS CLI: Show" -> copiar o bloco [default]
+scripts/aws-academy-rotate.sh --paste --save            # grava nos 4 repos + ~/.aws/credentials
+scripts/aws-academy-rotate.sh --paste --save --dispatch # ...e dispara o CD de main em cada repo
+```
+
+Um run que falhou por token expirado não precisa de novo push: rotacione e
+`gh run rerun <id> -R guilhermeqmaia/<repo>`. Conta pessoal do GitHub não tem
+secrets de organização — por isso o script grava repo a repo (secrets de repo
+são herdados pelos jobs com `environment:`).
+
+Cuidados do lab: encerrar a sessão **para as EC2** (o node group do EKS as
+recria ao voltar), mas control plane do EKS, RDS, NAT e ALB **continuam
+cobrando** — fora dos dias de demo, `terraform destroy`.
 
 ## Como aplicar
 
