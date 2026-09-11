@@ -68,9 +68,7 @@ jobs:
           ok=true
           { [ -n "${{ secrets.AWS_ROLE_ARN }}" ] || [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; } || ok=false
           [ -n "${{ secrets.TF_STATE_BUCKET }}" ] || ok=false
-          if [ "${{ matrix.stage }}" = "cluster" ]; then
-            [ -n "${{ vars.LAB_ROLE_ARN }}" ] || ok=false
-          else
+          if [ "${{ matrix.stage }}" != "cluster" ]; then
             [ -n "${{ vars.AUTH_LAMBDA_ARN }}" ] && [ -n "${{ vars.BACKEND_LISTENER_ARN }}" ] \
               && [ -n "${{ vars.VPC_LINK_SUBNET_IDS }}" ] && [ -n "${{ vars.VPC_LINK_SECURITY_GROUP_IDS }}" ] || ok=false
           fi
@@ -110,6 +108,7 @@ jobs:
           esac
         env:
           LAB_ROLE_ARN: ${{ vars.LAB_ROLE_ARN }}
+          CLUSTER_ADMIN_ARNS: ${{ vars.CLUSTER_ADMIN_ARNS }}
           AUTH_LAMBDA_ARN: ${{ vars.AUTH_LAMBDA_ARN }}
           BACKEND_LISTENER_ARN: ${{ vars.BACKEND_LISTENER_ARN }}
           VPC_LINK_SUBNET_IDS: ${{ vars.VPC_LINK_SUBNET_IDS }}

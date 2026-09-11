@@ -44,3 +44,13 @@ output "kubeconfig_command" {
   description = "Comando pronto para conectar o kubectl."
   value       = "aws eks update-kubeconfig --region ${var.aws_region} --name ${aws_eks_cluster.this.name}"
 }
+
+output "cluster_role_arn" {
+  description = "Role do control plane (LabRole no Academy ou criada em iam.tf)."
+  value       = local.cluster_role_arn
+}
+
+output "node_role_arn" {
+  description = "Role dos nodes (LabRole no Academy ou criada em iam.tf)."
+  value       = local.node_role_arn
+}

@@ -55,30 +55,43 @@ Regras deste e dos demais repositórios da solução:
 - Segredos de runtime (ex.: segredo de assinatura do JWT) vivem no **AWS
   Secrets Manager**, nunca em variável de ambiente commitada.
 
-## AWS Academy Learner Lab (credenciais por sessão)
+## Conta AWS: própria (OIDC) ou AWS Academy
 
-O lab entrega chaves temporárias novas a cada **Start Lab** (~4h). Como os
-4 repos deployam via GitHub Actions, os secrets precisam ser rotacionados a
-cada sessão — os scripts em [`scripts/`](scripts/) fazem isso pela CLI
-(`gh` autenticado + `aws` CLI):
+O Terraform e os workflows funcionam nos dois cenários; a diferença é só como
+o CI se autentica e de onde vêm as IAM roles do EKS
+([cluster/README](cluster/README.md#iam-aws-academy-ou-conta-própria)).
+
+### Conta própria (modo atual)
+
+Uma vez, com um profile local de admin (`aws configure --profile oficina`):
 
 ```bash
-# uma vez: bucket S3 do state + tabela de lock + secrets/vars estáveis nos 4 repos
-scripts/aws-academy-bootstrap.sh
+scripts/aws-account-bootstrap.sh --email voce@exemplo.com
+```
 
-# toda sessão do lab: AWS Details -> "AWS CLI: Show" -> copiar o bloco [default]
-scripts/aws-academy-rotate.sh --paste --save            # grava nos 4 repos + ~/.aws/credentials
+Cria bucket S3 do state + lock DynamoDB, provider OIDC do GitHub + role
+`github-actions-oficina` confiada aos 4 repos `soat-fiap-oficina-*`, um AWS
+Budget com alerta por e-mail, e grava `AWS_ROLE_ARN`/`TF_STATE_BUCKET`/
+`AWS_REGION` nos repos. **Nada expira** — sem rotação de credenciais.
+
+### AWS Academy Learner Lab (fallback)
+
+O lab entrega chaves temporárias novas a cada **Start Lab** (~4h); os secrets
+precisam ser rotacionados a cada sessão:
+
+```bash
+scripts/aws-academy-bootstrap.sh                        # uma vez: state + secrets/vars estáveis (LAB_ROLE_ARN)
+scripts/aws-academy-rotate.sh --paste --save            # toda sessão: bloco "AWS CLI: Show" -> 4 repos
 scripts/aws-academy-rotate.sh --paste --save --dispatch # ...e dispara o CD de main em cada repo
 ```
 
-Um run que falhou por token expirado não precisa de novo push: rotacione e
-`gh run rerun <id> -R guilhermeqmaia/<repo>`. Conta pessoal do GitHub não tem
-secrets de organização — por isso o script grava repo a repo (secrets de repo
-são herdados pelos jobs com `environment:`).
+Run que falhou por token expirado: rotacione e `gh run rerun <id> -R guilhermeqmaia/<repo>`.
+Conta pessoal do GitHub não tem secrets de organização — por isso o script
+grava repo a repo (secrets de repo são herdados pelos jobs com `environment:`).
 
-Cuidados do lab: encerrar a sessão **para as EC2** (o node group do EKS as
-recria ao voltar), mas control plane do EKS, RDS, NAT e ALB **continuam
-cobrando** — fora dos dias de demo, `terraform destroy`.
+Custo com tudo ligado ≈ US$ 0,30/h (EKS + 2 nodes + NAT + RDS + NLB): fora dos
+dias de demo, `destroy`. No Academy, encerrar a sessão **para as EC2** (o node
+group recria ao voltar), mas EKS/RDS/NAT continuam cobrando.
 
 ## Como aplicar
 
@@ -114,7 +127,8 @@ Estado remoto: S3 (`TF_STATE_BUCKET`), chave `oficina-infra-k8s/<stage>/<env>.tf
 **Secrets** (por ambiente ou repo): `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
 `AWS_SESSION_TOKEN` (Academy — renovar por sessão do lab), `TF_STATE_BUCKET`
 (ou `AWS_ROLE_ARN` para OIDC em conta própria).
-**Vars**: `LAB_ROLE_ARN` (cluster); `AUTH_LAMBDA_ARN`, `BACKEND_LISTENER_ARN`,
+**Vars**: `LAB_ROLE_ARN` (cluster — só no Academy), `CLUSTER_ADMIN_ARNS` (cluster — opcional,
+lista HCL de ARNs admin do kubectl); `AUTH_LAMBDA_ARN`, `BACKEND_LISTENER_ARN`,
 `VPC_LINK_SUBNET_IDS`, `VPC_LINK_SECURITY_GROUP_IDS` (gateway — outputs das
 US-F3-01/05/06). Sem eles o apply do stage é **ignorado com aviso** (não falha).
 

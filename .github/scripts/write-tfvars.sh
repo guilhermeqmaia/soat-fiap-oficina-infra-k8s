@@ -19,7 +19,8 @@ emit_raw() { # listas/objetos ja em sintaxe HCL, ex.: ["subnet-a","subnet-b"]
 
 case "$stage" in
   cluster)
-    emit lab_role_arn "${LAB_ROLE_ARN:-}"
+    emit lab_role_arn "${LAB_ROLE_ARN:-}"                  # vazio => conta propria (roles criadas)
+    emit_raw cluster_admin_arns "${CLUSTER_ADMIN_ARNS:-}"   # ex.: ["arn:aws:iam::123:user/x"]
     ;;
   gateway)
     emit auth_lambda_arn "${AUTH_LAMBDA_ARN:-}"
