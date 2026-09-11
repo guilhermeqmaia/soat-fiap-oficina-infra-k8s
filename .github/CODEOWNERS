@@ -1,0 +1,4 @@
+# Revisores padrao de todo PR (US-F3-07 — main protegida + PR obrigatorio).
+# O GitHub sugere automaticamente estes revisores e a branch protection
+# exige ao menos 1 aprovacao de quem tem write.
+*   @guilhermeqmaia @engineercodeprojects @lucascorreiabs @GabrielCarneiroSousa
