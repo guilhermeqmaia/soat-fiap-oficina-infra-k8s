@@ -1,5 +1,7 @@
 # soat-fiap-oficina-infra-k8s
 
+[![CI](https://github.com/guilhermeqmaia/soat-fiap-oficina-infra-k8s/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/guilhermeqmaia/soat-fiap-oficina-infra-k8s/actions/workflows/ci.yml) [![CD](https://github.com/guilhermeqmaia/soat-fiap-oficina-infra-k8s/actions/workflows/cd.yml/badge.svg?branch=main)](https://github.com/guilhermeqmaia/soat-fiap-oficina-infra-k8s/actions/workflows/cd.yml)
+
 Terraform da infraestrutura de nuvem do **Sistema da Oficina Mecânica**
 (Tech Challenge FIAP — Fase 3): API Gateway e, em breve, o cluster **Amazon
 EKS**. Repositório **2/4** da solução.
