@@ -74,6 +74,20 @@ Cria bucket S3 do state + lock DynamoDB, provider OIDC do GitHub + role
 Budget com alerta por e-mail, e grava `AWS_ROLE_ARN`/`TF_STATE_BUCKET`/
 `AWS_REGION` nos repos. **Nada expira** — sem rotação de credenciais.
 
+### Subir e derrubar tudo (demo/vídeo)
+
+```bash
+scripts/aws-deploy-all.sh            # ~45 min: cluster -> RDS -> Lambda -> app -> gateway -> app (URL) -> seeds -> smoke
+scripts/aws-deploy-all.sh --from app # retoma de uma etapa (cluster|db|lambda|app|gateway|url|seed)
+scripts/aws-destroy-all.sh --yes     # ~25 min: ordem inversa; ao final confere que nada cobrável sobrou
+```
+
+O deploy dispara os workflows de CD dos 4 repos e fecha os **contratos entre
+eles** sozinho (outputs do state S3 e da AWS → GitHub Variables): subnets/SGs
+→ infra-db e auth-lambda; ARN do secret do RDS → Lambda; ARN do secret JWT e
+alias da Lambda → app e gateway; listener do NLB interno → gateway; URL do
+gateway → app. Imprime a URL pública e as credenciais de demo dos seeds.
+
 ### AWS Academy Learner Lab (fallback)
 
 O lab entrega chaves temporárias novas a cada **Start Lab** (~4h); os secrets

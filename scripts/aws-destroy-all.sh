@@ -119,7 +119,8 @@ else echo "   state vazio"; fi
 # --- 6. Restos fora do Terraform ---------------------------------------------
 echo "== ecr"; for r in $(aws ecr describe-repositories --query 'repositories[].repositoryName' --output text); do
   aws ecr delete-repository --repository-name "$r" --force >/dev/null && echo "   $r"; done
-echo "== secrets manager (sem janela de recuperacao)"; for s in $(aws secretsmanager list-secrets --query 'SecretList[].ARN' --output text); do
+echo "== secrets manager (inclui os ja agendados: sem --include-planned-deletion o list nao os mostra)"
+for s in $(aws secretsmanager list-secrets --include-planned-deletion --query 'SecretList[].ARN' --output text); do
   aws secretsmanager delete-secret --secret-id "$s" --force-delete-without-recovery >/dev/null && echo "   $s"; done
 echo "== cloudwatch log groups"; for g in $(aws logs describe-log-groups --query 'logGroups[].logGroupName' --output text); do
   aws logs delete-log-group --log-group-name "$g" && echo "   $g"; done
