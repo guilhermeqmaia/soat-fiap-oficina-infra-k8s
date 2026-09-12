@@ -97,18 +97,17 @@ else echo "   state vazio"; fi
 
 # --- 5. Cluster (VPC, NAT, EKS, roles) ----------------------------------------
 echo "== cluster"
-# SG da Lambda foi criado por CLI (fora do Terraform): espera as ENIs da
-# Lambda sumirem (a AWS libera em ate ~20 min) e apaga antes da VPC.
-for sg in $(aws ec2 describe-security-groups --filters Name=group-name,Values=oficina-mecanica-auth-lambda --query 'SecurityGroups[].GroupId' --output text); do
+# ENIs da Lambda (Hyperplane) demoram ate ~20 min para a AWS liberar apos o
+# destroy da function; as ja desanexadas podem ser apagadas na hora. Sem isso
+# o destroy do SG da Lambda (stage cluster) fica preso em DependencyViolation.
+for sg in $(aws ec2 describe-security-groups --filters Name=tag:Name,Values=oficina-mecanica-auth-lambda --query 'SecurityGroups[].GroupId' --output text); do
   for i in $(seq 1 60); do
-    # ENIs ja desanexadas (status available) podem ser apagadas na hora.
     for eni in $(aws ec2 describe-network-interfaces --filters Name=group-id,Values="$sg" Name=status,Values=available --query 'NetworkInterfaces[].NetworkInterfaceId' --output text); do
       aws ec2 delete-network-interface --network-interface-id "$eni" 2>/dev/null && echo "   eni $eni apagada" || true
     done
     n=$(aws ec2 describe-network-interfaces --filters Name=group-id,Values="$sg" --query 'length(NetworkInterfaces)' --output text)
     [ "$n" = "0" ] && break; echo "   aguardando ENIs da Lambda ($n)..."; sleep 20
   done
-  aws ec2 delete-security-group --group-id "$sg" && echo "   sg lambda $sg removido"
 done
 tf_init "$HERE/cluster" "oficina-infra-k8s/cluster/$ENV.tfstate"
 if tf_has_state "$HERE/cluster"; then

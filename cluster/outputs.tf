@@ -54,3 +54,8 @@ output "node_role_arn" {
   description = "Role dos nodes (LabRole no Academy ou criada em iam.tf)."
   value       = local.node_role_arn
 }
+
+output "auth_lambda_security_group_id" {
+  description = "SG da Lambda de auth por CPF — entrada security_group_ids do repo auth-lambda (var SECURITY_GROUP_IDS no CI)."
+  value       = aws_security_group.auth_lambda.id
+}
