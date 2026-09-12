@@ -10,16 +10,19 @@ out="$2"
 
 emit() { # emit <nome-tf> <valor>
   local name="$1" value="$2"
-  [ -n "$value" ] && echo "$name = \"$value\"" >> "$out"
+  [ -n "$value" ] || return 0 # vazio => fica o default do variables.tf
+  echo "$name = \"$value\"" >> "$out"
 }
 emit_raw() { # listas/objetos ja em sintaxe HCL, ex.: ["subnet-a","subnet-b"]
   local name="$1" value="$2"
-  [ -n "$value" ] && echo "$name = $value" >> "$out"
+  [ -n "$value" ] || return 0
+  echo "$name = $value" >> "$out"
 }
 
 case "$stage" in
   cluster)
-    emit lab_role_arn "${LAB_ROLE_ARN:-}"
+    emit lab_role_arn "${LAB_ROLE_ARN:-}"                  # vazio => conta propria (roles criadas)
+    emit_raw cluster_admin_arns "${CLUSTER_ADMIN_ARNS:-}"   # ex.: ["arn:aws:iam::123:user/x"]
     ;;
   gateway)
     emit auth_lambda_arn "${AUTH_LAMBDA_ARN:-}"

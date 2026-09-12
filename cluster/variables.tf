@@ -13,13 +13,20 @@ variable "project_name" {
 }
 
 variable "lab_role_arn" {
-  description = "ARN da LabRole do AWS Academy — usada como role do cluster E do node group (o lab nao permite criar IAM roles)."
+  description = "AWS Academy: ARN da LabRole, usada como role do cluster E do node group (o lab nao permite criar IAM roles). Vazio = conta propria: o stage cria as roles (iam.tf)."
   type        = string
+  default     = ""
 
   validation {
-    condition     = startswith(var.lab_role_arn, "arn:aws:iam:")
-    error_message = "lab_role_arn deve ser um ARN de IAM role (arn:aws:iam::<conta>:role/LabRole)."
+    condition     = var.lab_role_arn == "" || startswith(var.lab_role_arn, "arn:aws:iam:")
+    error_message = "lab_role_arn deve ser vazio (conta propria) ou um ARN de IAM role (arn:aws:iam::<conta>:role/LabRole)."
   }
+}
+
+variable "cluster_admin_arns" {
+  description = "ARNs IAM (usuarios/roles) que recebem AmazonEKSClusterAdminPolicy via access entry — alem de quem roda o apply."
+  type        = list(string)
+  default     = []
 }
 
 variable "kubernetes_version" {

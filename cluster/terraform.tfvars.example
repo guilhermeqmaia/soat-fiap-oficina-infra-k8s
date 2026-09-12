@@ -1,7 +1,11 @@
 # Copie para terraform.tfvars e preencha.
 
 # AWS Academy: a LabRole assume o papel de role do cluster e dos nodes.
-lab_role_arn = "arn:aws:iam::123456789012:role/LabRole"
+# Conta propria: deixe vazio/omita — o stage cria as roles (iam.tf).
+# lab_role_arn = "arn:aws:iam::123456789012:role/LabRole"
+
+# Conta propria: quem mais e admin do cluster (kubectl) alem de quem roda o apply.
+# cluster_admin_arns = ["arn:aws:iam::123456789012:user/guilherme-cli"]
 
 # Opcionais (defaults em variables.tf)
 # aws_region          = "us-east-1"

@@ -29,14 +29,20 @@ Provisiona a **rede da solução inteira** e o **cluster Kubernetes gerenciado**
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## Decisões do AWS Academy (importantes)
+## IAM: AWS Academy ou conta própria
 
-| Restrição do lab | Consequência |
+| `lab_role_arn` | Modo | O que acontece |
+|---|---|---|
+| preenchido | **AWS Academy** | LabRole é a role do cluster **e** do node group; nada de IAM é criado (o lab não permite) |
+| vazio (default) | **Conta própria** | `iam.tf` cria `<cluster>-cluster-role` e `<cluster>-node-role` com as policies gerenciadas da AWS; `cluster_admin_arns` dá `kubectl` admin a outros principals via access entry |
+
+Decisões mantidas nos dois modos, para o stage ser portável:
+
+| Restrição (origem: Academy) | Consequência |
 |---|---|
-| Não cria IAM roles | **LabRole** é a role do cluster **e** do node group (`lab_role_arn`) |
-| Não cria OIDC provider | **Sem IRSA** → sem AWS Load Balancer Controller |
+| Sem OIDC provider/IRSA | **Sem AWS Load Balancer Controller** |
 | Sem LB Controller | O app é exposto por **NLB interno via provider in-tree** do Kubernetes — basta anotar o Service (US-F3-06), sem IAM extra |
-| Sessão expira (~4h) | Renove as credenciais antes de `plan`/`apply`; o state local segue válido |
+| Sessão do lab expira (~4h) | No Academy, renove as credenciais antes de `plan`/`apply` (`scripts/aws-academy-rotate.sh`); em conta própria o CI usa OIDC (`AWS_ROLE_ARN`) |
 
 Anotações do Service da aplicação (US-F3-06) que criam o NLB interno:
 
@@ -49,7 +55,7 @@ service.beta.kubernetes.io/aws-load-balancer-internal: "true"
 
 ```bash
 cd cluster
-cp terraform.tfvars.example terraform.tfvars   # ARN da LabRole
+cp terraform.tfvars.example terraform.tfvars   # LabRole (Academy) ou vazio (conta propria)
 terraform init && terraform apply              # ~15 min (EKS)
 
 # Conectar o kubectl:

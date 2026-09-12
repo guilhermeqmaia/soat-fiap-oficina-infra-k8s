@@ -1,7 +1,7 @@
 # Stage cluster — EKS gerenciado com managed node group e add-ons.
 #
-# AWS Academy: a LabRole faz o papel de role do CLUSTER e do NODE GROUP (o lab
-# nao permite criar IAM roles nem OIDC provider). Consequencias assumidas:
+# IAM em iam.tf: LabRole (AWS Academy) ou roles criadas aqui (conta propria).
+# Consequencias assumidas para funcionar nos dois modos:
 #   - sem IRSA -> sem AWS Load Balancer Controller (precisaria de role);
 #   - o app e exposto por NLB INTERNO via provider in-tree do Kubernetes
 #     (annotations no Service — US-F3-06), que nao exige IAM extra;
@@ -14,7 +14,7 @@ resource "aws_cloudwatch_log_group" "cluster" {
 
 resource "aws_eks_cluster" "this" {
   name     = local.cluster_name
-  role_arn = var.lab_role_arn
+  role_arn = local.cluster_role_arn
   version  = var.kubernetes_version
 
   vpc_config {
@@ -27,19 +27,19 @@ resource "aws_eks_cluster" "this" {
 
   enabled_cluster_log_types = ["api", "audit"]
 
-  # Quem roda o apply (credencial do lab) vira admin do cluster.
+  # Quem roda o apply (CI via OIDC ou credencial do lab) vira admin do cluster.
   access_config {
     authentication_mode                         = "API_AND_CONFIG_MAP"
     bootstrap_cluster_creator_admin_permissions = true
   }
 
-  depends_on = [aws_cloudwatch_log_group.cluster]
+  depends_on = [aws_cloudwatch_log_group.cluster, aws_iam_role_policy_attachment.cluster]
 }
 
 resource "aws_eks_node_group" "default" {
   cluster_name    = aws_eks_cluster.this.name
   node_group_name = "${var.project_name}-nodes"
-  node_role_arn   = var.lab_role_arn
+  node_role_arn   = local.node_role_arn
   subnet_ids      = aws_subnet.private[*].id
   instance_types  = var.node_instance_types
 
@@ -57,6 +57,8 @@ resource "aws_eks_node_group" "default" {
   lifecycle {
     ignore_changes = [scaling_config[0].desired_size]
   }
+
+  depends_on = [aws_iam_role_policy_attachment.nodes]
 }
 
 # Add-ons gerenciados. metrics-server e o pre-requisito do HPA (US-F3-06);
