@@ -123,6 +123,8 @@ log "contratos da lambda"
 setvar "$R_APP" JWT_SECRET_ID "$JWT_SECRET_ARN"; setvar "$R_K8S" AUTH_LAMBDA_ARN "$ALIAS_ARN"; setvar "$R_LAMBDA" LAMBDA_FUNCTION_NAME "$FN"
 
 # --- 4. App no EKS (precisa do cluster pronto) ------------------------------------
+# Retomada com --from: o cluster pode ter sido disparado por uma execucao anterior.
+[ -n "$CLUSTER_RUN" ] || CLUSTER_RUN=$(gh run list -R "$R_K8S" --workflow cd.yml --limit 1 --json databaseId,status -q '.[] | select(.status!="completed") | .databaseId')
 if [ -n "$CLUSTER_RUN" ]; then log "aguardando o cluster terminar"; wait_wf "$R_K8S" "$CLUSTER_RUN"; fi
 if ! skip app; then
   log "4/7 app: build + ECR + EKS + migrations (~4 min)"
