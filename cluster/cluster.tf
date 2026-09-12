@@ -78,7 +78,7 @@ resource "aws_eks_addon" "this" {
 # e a autorizacao de verdade acontece no gateway + app (defesa em profundidade).
 resource "aws_vpc_security_group_ingress_rule" "nodes_from_vpc" {
   security_group_id = aws_eks_cluster.this.vpc_config[0].cluster_security_group_id
-  description       = "Trafego interno da VPC (VPC Link -> NLB -> NodePort)"
+  description       = "Trafego interno da VPC (VPC Link, NLB, NodePort)"
   cidr_ipv4         = var.vpc_cidr
   ip_protocol       = "tcp"
   from_port         = 0
