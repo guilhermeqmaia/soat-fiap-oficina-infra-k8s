@@ -11,19 +11,21 @@
 # EKS. O cd.yml da Lambda nao roda aqui: o Terraform ja publica a versao e o
 # alias a acompanha; ele so faz sentido em push de codigo novo.
 #
-# Uso: scripts/aws-deploy-all.sh [--profile oficina] [--env prod] [--no-seed] [--from <etapa>]
+# Uso: scripts/aws-deploy-all.sh [--profile oficina] [--env prod] [--no-seed] [--from <etapa>] [--observability datadog|prometheus|none]
 #   --from cluster|db|lambda|app|gateway|url|seed   retoma a partir de uma etapa
 # Pre-requisitos: aws, kubectl, gh (logado), python3, curl. Vars/secrets
 # estaveis ja criados pelo aws-account-bootstrap.sh. Do zero: ~30 min.
 set -euo pipefail
 
 PROFILE="oficina"; ENV="prod"; SEED=true; FROM="cluster"
+OBS="${OBSERVABILITY:-}"; [ -z "$OBS" ] && { [ -n "${DD_API_KEY:-}" ] && OBS=datadog || OBS=none; }
 while [ $# -gt 0 ]; do
   case "$1" in
     --profile) PROFILE="$2"; shift ;;
     --env) ENV="$2"; shift ;;
     --no-seed) SEED=false ;;
     --from) FROM="$2"; shift ;;
+    --observability) OBS="$2"; shift ;;   # datadog|prometheus|none (default: datadog se DD_API_KEY, senao none)
     -h|--help) sed -n '2,18p' "$0"; exit 0 ;;
     *) echo "flag desconhecida: $1" >&2; exit 1 ;;
   esac; shift
@@ -144,6 +146,12 @@ log "URL publica: $GW"; setvar "$R_APP" GATEWAY_URL "$GW"
 if ! skip url; then
   log "6/7 app: redeploy com GATEWAY_URL (~3 min)"
   run_wf "$R_APP" cd-aws.yml
+fi
+
+# --- 6b. Observabilidade (US-F3-10) — opcional ------------------------------------
+if [ "$OBS" != none ] && ! skip url; then
+  log "observabilidade: $OBS"
+  "$(dirname "$0")/aws-observability.sh" "$OBS" --profile "$PROFILE"
 fi
 
 # --- 7. Seeds + smoke -------------------------------------------------------------
