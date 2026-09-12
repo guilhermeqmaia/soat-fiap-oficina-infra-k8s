@@ -109,6 +109,7 @@ jobs:
         env:
           LAB_ROLE_ARN: ${{ vars.LAB_ROLE_ARN }}
           CLUSTER_ADMIN_ARNS: ${{ vars.CLUSTER_ADMIN_ARNS }}
+          NODE_INSTANCE_TYPES: ${{ vars.NODE_INSTANCE_TYPES }}
           AUTH_LAMBDA_ARN: ${{ vars.AUTH_LAMBDA_ARN }}
           BACKEND_LISTENER_ARN: ${{ vars.BACKEND_LISTENER_ARN }}
           VPC_LINK_SUBNET_IDS: ${{ vars.VPC_LINK_SUBNET_IDS }}
