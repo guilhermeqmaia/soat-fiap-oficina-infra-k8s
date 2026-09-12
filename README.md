@@ -74,19 +74,23 @@ Cria bucket S3 do state + lock DynamoDB, provider OIDC do GitHub + role
 Budget com alerta por e-mail, e grava `AWS_ROLE_ARN`/`TF_STATE_BUCKET`/
 `AWS_REGION` nos repos. **Nada expira** — sem rotação de credenciais.
 
-### Subir e derrubar tudo (demo/vídeo)
+### Subir, pausar e derrubar tudo (demo/vídeo)
 
 ```bash
-scripts/aws-deploy-all.sh            # ~45 min: cluster -> RDS -> Lambda -> app -> gateway -> app (URL) -> seeds -> smoke
+scripts/aws-deploy-all.sh            # ~30 min do zero: cluster ∥ (RDS -> Lambda) -> app -> gateway -> app (URL) -> seeds -> smoke
 scripts/aws-deploy-all.sh --from app # retoma de uma etapa (cluster|db|lambda|app|gateway|url|seed)
-scripts/aws-destroy-all.sh --yes     # ~25 min: ordem inversa; ao final confere que nada cobrável sobrou
+scripts/aws-pause.sh                 # entre gravações: nodes -> 0 e RDS parado (~US$ 3,5/dia)
+scripts/aws-resume.sh                # ~8-10 min: religa RDS e nodes, espera NLB, smoke
+scripts/aws-destroy-all.sh --yes     # ~25 min: ordem inversa; confere que nada cobrável sobrou
 ```
 
 O deploy dispara os workflows de CD dos 4 repos e fecha os **contratos entre
-eles** sozinho (outputs do state S3 e da AWS → GitHub Variables): subnets/SGs
-→ infra-db e auth-lambda; ARN do secret do RDS → Lambda; ARN do secret JWT e
-alias da Lambda → app e gateway; listener do NLB interno → gateway; URL do
-gateway → app. Imprime a URL pública e as credenciais de demo dos seeds.
+eles** sozinho (IDs da rede por tag na AWS, outputs do state S3 → GitHub
+Variables): subnets/SGs → infra-db e auth-lambda; ARN do secret do RDS →
+Lambda; ARN do secret JWT e alias da Lambda → app e gateway; listener do NLB
+interno → gateway; URL do gateway → app. RDS e Lambda sobem **em paralelo**
+com o EKS (só dependem da VPC). Imprime a URL pública e as credenciais de
+demo dos seeds.
 
 ### AWS Academy Learner Lab (fallback)
 
