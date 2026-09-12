@@ -19,6 +19,11 @@ on:
         type: choice
         options: [plan, apply, destroy]
         default: plan
+      stage:
+        description: Stage (all = cluster e depois gateway)
+        type: choice
+        options: [all, cluster, gateway]
+        default: all
 
 permissions:
   contents: read
@@ -54,7 +59,9 @@ jobs:
     strategy:
       max-parallel: 1 # cluster antes de gateway (gateway consome a rede)
       matrix:
-        stage: [cluster, gateway]
+        # Push e dispatch "all": cluster e depois gateway. O aws-deploy-all.sh
+        # dispara so o gateway quando o cluster ja esta pronto (evita replanejar).
+        stage: ${{ fromJSON(inputs.stage == 'cluster' && '["cluster"]' || inputs.stage == 'gateway' && '["gateway"]' || '["cluster","gateway"]') }}
     env:
       AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
       TF_ENV: ${{ needs.resolve.outputs.tf_env }}
