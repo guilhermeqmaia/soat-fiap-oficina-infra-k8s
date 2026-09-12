@@ -75,6 +75,7 @@ kubectl top nodes          # metrics-server respondendo (HPA ok)
 |---|---|
 | `private_subnet_ids` | `gateway/` (`vpc_link_subnet_ids`) · repo **infra-db** (subnet group do RDS) · repo **auth-lambda** (`vpc_subnet_ids`) |
 | `vpc_link_security_group_id` | `gateway/` (`vpc_link_security_group_ids`) |
+| `auth_lambda_security_group_id` | repo **auth-lambda** (`security_group_ids`; var `SECURITY_GROUP_IDS` no CI) |
 | `vpc_id` / `vpc_cidr` | repo **infra-db** (SG do RDS: ingress só da VPC) |
 | `cluster_name` / `kubeconfig_command` | repo **app** (deploy US-F3-06, CI/CD US-F3-08) |
 | listener ARN do NLB interno | criado pelo Service do app (US-F3-06); obtido via `aws elbv2 describe-listeners` e passado ao `gateway/` (`backend_listener_arn`) |

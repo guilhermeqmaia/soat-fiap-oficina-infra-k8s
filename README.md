@@ -131,6 +131,8 @@ Estado remoto: S3 (`TF_STATE_BUCKET`), chave `oficina-infra-k8s/<stage>/<env>.tf
 lista HCL de ARNs admin do kubectl); `AUTH_LAMBDA_ARN`, `BACKEND_LISTENER_ARN`,
 `VPC_LINK_SUBNET_IDS`, `VPC_LINK_SECURITY_GROUP_IDS` (gateway — outputs das
 US-F3-01/05/06). Sem eles o apply do stage é **ignorado com aviso** (não falha).
+O stage `cluster/` também produz `auth_lambda_security_group_id` (SG da Lambda
+de auth) — vai para a var `SECURITY_GROUP_IDS` do repo auth-lambda.
 
 **Deploy ativo:** URL pública do gateway = output `api_base_url` do stage
 `gateway/` (aparece no summary do run de CD). <!-- atualizar com a URL após o primeiro apply -->

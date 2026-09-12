@@ -113,3 +113,23 @@ resource "aws_security_group" "vpc_link" {
 
   tags = { Name = "${var.project_name}-vpc-link" }
 }
+
+# SG dedicado a Lambda de autenticacao por CPF (repo auth-lambda, US-F3-01),
+# que roda nas subnets privadas para alcancar o RDS. Egress-only: a Lambda so
+# inicia conexoes (Postgres na VPC; Secrets Manager via NAT). Contrato:
+# output `auth_lambda_security_group_id` -> var `security_group_ids` da Lambda.
+resource "aws_security_group" "auth_lambda" {
+  name_prefix = "${var.project_name}-auth-lambda-"
+  description = "Lambda de auth por CPF (egress para RDS e Secrets Manager)"
+  vpc_id      = aws_vpc.this.id
+
+  egress {
+    description = "Saida para o RDS na VPC e para a internet via NAT"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = { Name = "${var.project_name}-auth-lambda" }
+}
