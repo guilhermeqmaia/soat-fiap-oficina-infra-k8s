@@ -77,6 +77,7 @@ Budget com alerta por e-mail, e grava `AWS_ROLE_ARN`/`TF_STATE_BUCKET`/
 ### Subir, pausar e derrubar tudo (demo/vídeo)
 
 ```bash
+# macOS: rode com `caffeinate -i <script>` — se o Mac dormir, o script congela entre os polls.
 scripts/aws-deploy-all.sh            # ~30 min do zero: cluster ∥ (RDS -> Lambda) -> app -> gateway -> app (URL) -> seeds -> smoke
 scripts/aws-deploy-all.sh --from app # retoma de uma etapa (cluster|db|lambda|app|gateway|url|seed)
 scripts/aws-pause.sh                 # entre gravações: nodes -> 0 e RDS parado (~US$ 3,5/dia)
