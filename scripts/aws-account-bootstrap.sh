@@ -63,7 +63,14 @@ else
     --thumbprint-list 6938fd4d98bab03faadb97b34396831e3780aea1 1c58a3a8518e8759bf075b76b750d4f2df264fcd >/dev/null
   echo "provider OIDC criado"
 fi
-subs=""; for r in $REPOS; do subs="$subs\"repo:${OWNER}/${r}:*\","; done
+# O GitHub pode emitir o `sub` com IDs imutaveis (repo:owner@ID/repo@ID:...);
+# a trust aceita as duas formas para nao depender dessa configuracao.
+owner_id="$(gh api "users/$OWNER" --jq .id)"
+subs=""
+for r in $REPOS; do
+  repo_id="$(gh api "repos/$OWNER/$r" --jq .id)"
+  subs="$subs\"repo:${OWNER}/${r}:*\",\"repo:${OWNER}@${owner_id}/${r}@${repo_id}:*\","
+done
 trust=$(cat <<JSON
 {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Federated":"$OIDC_ARN"},
  "Action":"sts:AssumeRoleWithWebIdentity","Condition":{
