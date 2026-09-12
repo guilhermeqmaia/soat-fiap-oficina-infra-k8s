@@ -10,6 +10,12 @@ PROFILE="oficina"; [ "${1:-}" = "--profile" ] && PROFILE="$2"
 export AWS_PROFILE="$PROFILE" AWS_DEFAULT_REGION="${AWS_REGION:-us-east-1}"
 PROJECT="${PROJECT_NAME:-oficina-mecanica}"; CLUSTER="$PROJECT-eks"; NODES="$PROJECT-nodes"; DB="$PROJECT-prod"
 
+# Primeiro a app -> 0: com o RDS parado os pods ficam 0/1 e o PDB (minAvailable 1)
+# passa a bloquear o drain dos nos. Com replicas=0 o HPA nao reescala.
+echo "== app -> 0 replicas"
+aws eks update-kubeconfig --name "$CLUSTER" >/dev/null
+kubectl -n oficina scale deployment/oficina-app --replicas=0
+kubectl -n oficina wait --for=delete pod -l app.kubernetes.io/name=oficina-app --timeout=120s 2>/dev/null || true
 echo "== node group $NODES -> 0"
 aws eks update-nodegroup-config --cluster-name "$CLUSTER" --nodegroup-name "$NODES" \
   --scaling-config minSize=0,maxSize=4,desiredSize=0 >/dev/null

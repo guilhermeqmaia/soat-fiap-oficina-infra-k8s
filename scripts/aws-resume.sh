@@ -20,7 +20,7 @@ until [ "$(kubectl get nodes --no-headers 2>/dev/null | grep -c ' Ready ')" -ge 
 log "2 nodes Ready"
 aws rds wait db-instance-available --db-instance-identifier "$DB"
 log "RDS available"
-kubectl -n oficina rollout restart deployment/oficina-app >/dev/null  # pods que subiram sem banco reiniciam limpos
+kubectl -n oficina scale deployment/oficina-app --replicas=2  # o HPA assume a partir daqui (min 2)
 kubectl -n oficina rollout status deployment/oficina-app --timeout=300s
 NLB=$(kubectl -n oficina get svc oficina-app -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 LB=$(aws elbv2 describe-load-balancers --query "LoadBalancers[?DNSName=='$NLB'].LoadBalancerArn" --output text)
