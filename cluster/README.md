@@ -36,6 +36,11 @@ Provisiona a **rede da solução inteira** e o **cluster Kubernetes gerenciado**
 | preenchido | **AWS Academy** | LabRole é a role do cluster **e** do node group; nada de IAM é criado (o lab não permite) |
 | vazio (default) | **Conta própria** | `iam.tf` cria `<cluster>-cluster-role` e `<cluster>-node-role` com as policies gerenciadas da AWS; `cluster_admin_arns` dá `kubectl` admin a outros principals via access entry |
 
+**Plano Free da AWS** (conta nova): o EC2 só lança tipos *free-tier-eligible*
+(`describe-instance-types --filters Name=free-tier-eligible,Values=true`) —
+`t3.medium` não é. Use `node_instance_types = ["m7i-flex.large"]` (2 vCPU,
+8 GiB, 29 pods/node); no CI, var `NODE_INSTANCE_TYPES`.
+
 Decisões mantidas nos dois modos, para o stage ser portável:
 
 | Restrição (origem: Academy) | Consequência |

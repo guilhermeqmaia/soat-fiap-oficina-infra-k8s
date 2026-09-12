@@ -23,6 +23,7 @@ case "$stage" in
   cluster)
     emit lab_role_arn "${LAB_ROLE_ARN:-}"                  # vazio => conta propria (roles criadas)
     emit_raw cluster_admin_arns "${CLUSTER_ADMIN_ARNS:-}"   # ex.: ["arn:aws:iam::123:user/x"]
+    emit_raw node_instance_types "${NODE_INSTANCE_TYPES:-}" # ex.: ["m7i-flex.large"] (plano Free: so tipos free-tier-eligible)
     ;;
   gateway)
     emit auth_lambda_arn "${AUTH_LAMBDA_ARN:-}"
