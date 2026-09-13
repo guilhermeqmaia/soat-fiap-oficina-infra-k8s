@@ -49,6 +49,10 @@ datadog:
           kubernetes_container_names: ["app"]
         configurations:
           - namespace: oficina
+            # Histogramas viram distribuicoes (p50/p95/p99 nativos em monitores e
+            # dashboards); .count/.sum continuam existindo para contagens e taxas.
+            histogram_buckets_as_distributions: true
+            collect_counters_with_distributions: true
             # OpenMetrics v2: contadores sao referenciados SEM o sufixo _total
             # (o check o remove antes de casar o nome) e viram <ns>.<nome>.count.
             metrics:
