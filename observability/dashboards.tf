@@ -9,8 +9,8 @@ locals {
   # no formato do Datadog (ver observability/README.md).
   m_transicoes   = "oficina.os_transicoes.count"
   m_integracoes  = "oficina.integracoes.count"
-  m_latencia     = "oficina.http_request_duration_seconds.bucket"
-  m_tempo_status = "oficina.os_tempo_no_status_seconds.bucket"
+  m_latencia     = "oficina.http_request_duration_seconds" # distribuicao (p95/p99 nativos)
+  m_tempo_status = "oficina.os_tempo_no_status_seconds"    # distribuicao
 }
 
 # ---------------------------------------------------------------------------
