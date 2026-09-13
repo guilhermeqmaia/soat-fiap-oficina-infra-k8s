@@ -37,6 +37,23 @@ datadog:
   prometheusScrape:
     enabled: true
     serviceEndpoints: true
+    # Mapeamento explicito das metricas da app (Service oficina-app com as
+    # annotations prometheus.io/*): garante os nomes que dashboards.tf e
+    # monitors.tf consomem (oficina.os_transicoes.count, ...). Sem isto o
+    # nome vira o derivado automatico (ex.: oficina.os_transicoes_count).
+    additionalConfigs:
+      - autodiscovery:
+          kubernetes_annotations:
+            include:
+              prometheus.io/scrape: "true"
+          kubernetes_container_names: ["app"]
+        configurations:
+          - namespace: oficina
+            metrics:
+              - oficina_os_transicoes_total: os_transicoes
+              - oficina_integracoes_total: integracoes
+              - oficina_os_tempo_no_status_seconds: os_tempo_no_status_seconds
+              - oficina_http_request_duration_seconds: http_request_duration_seconds
 
 clusterAgent:
   enabled: true
