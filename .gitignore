@@ -18,3 +18,6 @@ crash.*.log
 # kubeconfig gerado, caso caia dentro do repo
 *.kubeconfig
 kubeconfig
+
+# gerado pelos scripts/CI para apontar o state para o S3
+backend_override.tf
