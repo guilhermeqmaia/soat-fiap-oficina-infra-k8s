@@ -49,9 +49,11 @@ datadog:
           kubernetes_container_names: ["app"]
         configurations:
           - namespace: oficina
+            # OpenMetrics v2: contadores sao referenciados SEM o sufixo _total
+            # (o check o remove antes de casar o nome) e viram <ns>.<nome>.count.
             metrics:
-              - oficina_os_transicoes_total: os_transicoes
-              - oficina_integracoes_total: integracoes
+              - oficina_os_transicoes: os_transicoes
+              - oficina_integracoes: integracoes
               - oficina_os_tempo_no_status_seconds: os_tempo_no_status_seconds
               - oficina_http_request_duration_seconds: http_request_duration_seconds
 
