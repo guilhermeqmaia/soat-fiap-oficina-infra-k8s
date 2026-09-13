@@ -126,7 +126,7 @@ resource "datadog_dashboard" "tecnico" {
     timeseries_definition {
       title = "CPU e memoria dos pods (EKS)"
       request {
-        q            = "avg:kubernetes.cpu.usage.total{kube_namespace:oficina} by {pod_name}"
+        q            = "avg:kubernetes.cpu.usage.total{kube_namespace:oficina} by {pod_name} / 1000000" # nanocores -> millicores
         display_type = "line"
       }
       request {

@@ -104,12 +104,14 @@ resource "datadog_monitor" "latencia_slo" {
 # ---------------------------------------------------------------------------
 # PLATAFORMA — recursos do cluster e pods instaveis
 # ---------------------------------------------------------------------------
+# kubernetes.cpu.usage.total e em NANOcores e cpu.limits em cores: sem o /1e9 a
+# razao passa de 1 sempre (alertava com 4% de uso — visto em 13/09/2026).
 resource "datadog_monitor" "cpu_pods" {
   count = local.habilitado ? 1 : 0
 
   name  = "[AVISO] CPU dos pods da aplicacao acima de 85%"
   type  = "query alert"
-  query = "avg(last_10m):avg:kubernetes.cpu.usage.total{kube_namespace:oficina} by {pod_name} / avg:kubernetes.cpu.limits{kube_namespace:oficina} by {pod_name} > 0.85"
+  query = "avg(last_10m):(avg:kubernetes.cpu.usage.total{kube_namespace:oficina} by {pod_name} / 1000000000) / avg:kubernetes.cpu.limits{kube_namespace:oficina} by {pod_name} > 0.85"
 
   message = <<-EOT
     Pods perto do limite de CPU. O HPA escala em 70% — se este alerta disparar
