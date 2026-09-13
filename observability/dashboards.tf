@@ -38,13 +38,11 @@ resource "datadog_dashboard" "negocio" {
   # 2) Tempo medio de execucao por status (Diagnostico, Execucao, Finalizacao).
   widget {
     timeseries_definition {
-      title = "Tempo medio por status (p50 e p95)"
+      title = "Tempo medio por status (Diagnostico, Execucao, Finalizacao)"
+      # Media = soma / contagem do histograma (OpenMetrics). Nao depende de
+      # percentil habilitado na distribuicao — que so existe apos a 1a amostra.
       request {
-        q            = "p50:${local.m_tempo_status}{*} by {status}"
-        display_type = "line"
-      }
-      request {
-        q            = "p95:${local.m_tempo_status}{*} by {status}"
+        q            = "sum:${local.m_tempo_status}.sum{*} by {status}.as_count() / sum:${local.m_tempo_status}.count{*} by {status}.as_count()"
         display_type = "line"
       }
     }
