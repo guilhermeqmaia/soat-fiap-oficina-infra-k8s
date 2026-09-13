@@ -59,7 +59,15 @@ resource "datadog_synthetics_test" "health" {
   subtype   = "http"
   status    = "live"
   locations = ["aws:us-east-1", "aws:sa-east-1"]
-  message   = "A API da oficina nao respondeu 200 em /health. ${local.destino}"
+  message   = <<-EOT
+    A API da oficina nao respondeu 200 em `/health` pelo endpoint publico (gateway).
+
+    **O que significa:** o cliente nao consegue usar o sistema — pode ser o
+    API Gateway, o VPC Link, o NLB interno ou a propria aplicacao.
+
+    **Runbook:** `curl $GATEWAY_URL/health` e `kubectl -n oficina get pods`;
+    pods ok => problema de borda (gateway/VPC Link). ${local.destino}
+  EOT
   tags      = ["projeto:oficina-mecanica", "fase:3", "story:us-f3-10"]
 
   request_definition {

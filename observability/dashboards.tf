@@ -22,7 +22,7 @@ resource "datadog_dashboard" "negocio" {
   title       = "Oficina — Operacao (negocio)"
   description = "Volume de OS, tempo por status e erros de integracao (US-F3-11)."
   layout_type = "ordered"
-  tags        = ["projeto:oficina-mecanica", "fase:3"]
+  tags        = ["team:oficina-mecanica"] # a API de dashboards so aceita as chaves team/ai
 
   # 1) Volume diario de ordens de servico, quebrado por status de destino.
   widget {
@@ -91,7 +91,7 @@ resource "datadog_dashboard" "tecnico" {
   title       = "Oficina — Saude tecnica"
   description = "Latencia, 5xx, CPU/memoria do EKS e uptime (US-F3-10/11)."
   layout_type = "ordered"
-  tags        = ["projeto:oficina-mecanica", "fase:3"]
+  tags        = ["team:oficina-mecanica"] # a API de dashboards so aceita as chaves team/ai
 
   widget {
     timeseries_definition {
