@@ -9,6 +9,8 @@
 # ---------------------------------------------------------------------------
 # NEGOCIO — exigido pelo enunciado: falha no processamento de ordens de servico
 # ---------------------------------------------------------------------------
+# default_zero(): sem nenhum 5xx a serie nao existe e o monitor ficaria em "No Data";
+# com zero explicito ele avalia OK (visto em 13/09/2026).
 resource "datadog_monitor" "falha_processamento_os" {
   count = local.habilitado ? 1 : 0
 
@@ -17,7 +19,7 @@ resource "datadog_monitor" "falha_processamento_os" {
 
   # 5xx nas rotas de OS: excecao nao tratada no fluxo (transicao de status,
   # aprovacao, execucao). Janela de 15min para nao alarmar em falha isolada.
-  query = "sum(last_15m):sum:oficina.http_request_duration_seconds.count{status:5*,route:/ordens-servico*}.as_count() > 5"
+  query = "sum(last_15m):default_zero(sum:oficina.http_request_duration_seconds.count{status:5*,route:/ordens-servico*}.as_count()) > 5"
 
   message = <<-EOT
     Mais de 5 erros 5xx em rotas de ordem de servico nos ultimos 15 minutos.
@@ -49,7 +51,7 @@ resource "datadog_monitor" "falha_notificacao" {
 
   name  = "[AVISO] Falhas na entrega de notificacoes"
   type  = "query alert"
-  query = "sum(last_30m):sum:oficina.integracoes.count{resultado:falha,integracao:webhook-notificacao}.as_count() > 3"
+  query = "sum(last_30m):default_zero(sum:oficina.integracoes.count{resultado:falha,integracao:webhook-notificacao}.as_count()) > 3"
 
   message = <<-EOT
     Notificacoes ao cliente falhando (webhook 4xx/5xx ou timeout).
@@ -81,7 +83,7 @@ resource "datadog_monitor" "latencia_slo" {
   name = "[AVISO] Latencia da API acima do SLO (p95 > 500ms)"
   type = "query alert"
   # Mesmo SLO da suite de carga (perf/lib/config.js): p95 < 500ms em leitura.
-  query = "avg(last_10m):p95:oficina.http_request_duration_seconds.bucket{*} > 0.5"
+  query = "avg(last_10m):p95:oficina.http_request_duration_seconds{*} > 0.5"
 
   message = <<-EOT
     O p95 de latencia passou de 500ms (SLO versionado em `perf/lib/config.js`).
