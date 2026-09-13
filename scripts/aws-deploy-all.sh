@@ -18,6 +18,7 @@
 set -euo pipefail
 
 PROFILE="oficina"; ENV="prod"; SEED=true; FROM="cluster"
+[ -f "$HOME/.config/oficina/datadog.env" ] && { set -a; . "$HOME/.config/oficina/datadog.env"; set +a; }
 OBS="${OBSERVABILITY:-}"; [ -z "$OBS" ] && { [ -n "${DD_API_KEY:-}" ] && OBS=datadog || OBS=none; }
 while [ $# -gt 0 ]; do
   case "$1" in

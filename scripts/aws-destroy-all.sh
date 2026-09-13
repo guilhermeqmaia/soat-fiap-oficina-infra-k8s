@@ -46,6 +46,9 @@ tf_init() { # tf_init <dir> <state-key> [lock]
 }
 tf_has_state() { ( cd "$1" && [ -n "$(terraform state list 2>/dev/null)" ] ); }
 
+# --- 0. Observabilidade (agente + dashboards/monitores no Datadog) ------------
+"$HERE/scripts/aws-observability.sh" none --profile "$PROFILE" || true
+
 # --- 1. App: namespace inteiro (NLB interno + ENIs, pods, HPA) --------------
 if aws eks describe-cluster --name "$CLUSTER" >/dev/null 2>&1; then
   echo "== app: removendo namespace oficina"
