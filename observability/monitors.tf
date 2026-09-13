@@ -155,26 +155,8 @@ resource "datadog_monitor" "pods_crashloop" {
 }
 
 # ---------------------------------------------------------------------------
-# BORDA — uptime (usa os testes sinteticos de synthetics.tf)
+# BORDA — uptime: o alerta e o monitor que o proprio teste sintetico cria
+# ("[Synthetics] oficina — /health (liveness)", synthetics.tf). A API de
+# monitores rejeita criar/alterar monitores de sintetico diretamente
+# ("use Synthetics API instead"), entao a mensagem/runbook ficam no teste.
 # ---------------------------------------------------------------------------
-resource "datadog_monitor" "uptime" {
-  count = local.habilitado ? 1 : 0
-
-  name  = "[CRITICO] API publica fora do ar"
-  type  = "synthetics alert"
-  query = "\"${datadog_synthetics_test.health[0].monitor_id}\".last(2).count_by_status()"
-
-  message = <<-EOT
-    O monitor sintetico de `/health` falhou pelo endpoint publico (gateway).
-
-    **O que significa:** o cliente nao consegue usar o sistema — pode ser o
-    API Gateway, o VPC Link, o NLB interno ou a propria aplicacao.
-
-    **Runbook:**
-    1. `curl $GATEWAY_URL/health` e depois `kubectl -n oficina get pods`
-    2. Se os pods estao ok, o problema e de borda (gateway/VPC Link)
-    ${local.destino}
-  EOT
-
-  tags = ["projeto:oficina-mecanica", "fase:3", "tipo:borda"]
-}
