@@ -155,8 +155,10 @@ US-F3-01/05/06). Sem eles o apply do stage é **ignorado com aviso** (não falha
 O stage `cluster/` também produz `auth_lambda_security_group_id` (SG da Lambda
 de auth) — vai para a var `SECURITY_GROUP_IDS` do repo auth-lambda.
 
-**Deploy ativo:** URL pública do gateway = output `api_base_url` do stage
-`gateway/` (aparece no summary do run de CD). <!-- atualizar com a URL após o primeiro apply -->
+**Deploy ativo (desde 15/09/2026):** `https://3jpje9so5m.execute-api.us-east-1.amazonaws.com` — output `api_base_url` do stage
+`gateway/`. Como autenticar e consumir: README do
+[soat-fiap-oficina-mecanica-app](https://github.com/guilhermeqmaia/soat-fiap-oficina-mecanica-app#cicd).
+Dashboards do Datadog: [Operação](https://app.datadoghq.com/dashboard/h6d-7ck-wpt/oficina--operacao-negocio) · [Saúde técnica](https://app.datadoghq.com/dashboard/n6g-am5-bat/oficina--saude-tecnica).
 
 ## Documentação
 
