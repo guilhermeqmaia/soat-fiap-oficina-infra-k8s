@@ -30,9 +30,9 @@ variable "cluster_admin_arns" {
 }
 
 variable "kubernetes_version" {
-  description = "Versao do Kubernetes do EKS."
+  description = "Versao do Kubernetes do EKS. Manter em suporte PADRAO: versoes em extended support custam 6x no control plane (US$ 0,60/h vs 0,10/h — visto na conta em 09/2026 com a 1.31)."
   type        = string
-  default     = "1.31"
+  default     = "1.36"
 }
 
 variable "vpc_cidr" {
