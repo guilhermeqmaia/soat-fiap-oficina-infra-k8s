@@ -27,7 +27,7 @@ LB=$(aws elbv2 describe-load-balancers --query "LoadBalancers[?DNSName=='$NLB'].
 TG=$(aws elbv2 describe-target-groups --load-balancer-arn "$LB" --query 'TargetGroups[0].TargetGroupArn' --output text)
 until [ "$(aws elbv2 describe-target-health --target-group-arn "$TG" --query "length(TargetHealthDescriptions[?TargetHealth.State=='healthy'])" --output text)" -ge 1 ]; do sleep 15; done
 log "NLB com alvo saudavel"
-GW=$(gh variable get GATEWAY_URL -R "$OWNER/soat-fiap-oficina-mecanica-app")
+GW=$(gh variable get GATEWAY_URL -R "$OWNER/soat-fiap-oficina-os-service")
 for i in $(seq 1 12); do c=$(curl -s -o /dev/null -w '%{http_code}' "$GW/health"); [ "$c" = 200 ] && break; sleep 10; done
 c2=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$GW/auth" -H 'content-type: application/json' -d '{"cpf":"52998224725","senha":"admin123"}')
 log "smoke: GET /health -> $c · POST /auth admin -> $c2"

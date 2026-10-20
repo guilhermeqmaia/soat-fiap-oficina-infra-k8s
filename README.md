@@ -11,7 +11,7 @@ EKS**. Repositório **2/4** da solução.
 | 1 | [soat-fiap-oficina-auth-lambda](https://github.com/guilhermeqmaia/soat-fiap-oficina-auth-lambda) | Function serverless de autenticação por CPF |
 | 2 | **soat-fiap-oficina-infra-k8s** (este) | Terraform do API Gateway + cluster EKS |
 | 3 | [soat-fiap-oficina-infra-db](https://github.com/guilhermeqmaia/soat-fiap-oficina-infra-db) | Terraform do banco gerenciado (RDS PostgreSQL) |
-| 4 | [soat-fiap-oficina-mecanica-app](https://github.com/guilhermeqmaia/soat-fiap-oficina-mecanica-app) | Aplicação NestJS + manifestos K8s + docs |
+| 4 | [soat-fiap-oficina-os-service](https://github.com/guilhermeqmaia/soat-fiap-oficina-os-service) | Aplicação NestJS + manifestos K8s + docs |
 
 ## Onde este repositório entra
 
@@ -32,7 +32,7 @@ flowchart LR
 | [1 · auth-lambda](https://github.com/guilhermeqmaia/soat-fiap-oficina-auth-lambda) | emite o JWT (CPF) e valida no gateway |
 | **2 · este repo** | **API Gateway, cluster EKS e observabilidade** |
 | [3 · infra-db](https://github.com/guilhermeqmaia/soat-fiap-oficina-infra-db) | RDS PostgreSQL gerenciado |
-| [4 · mecanica-app](https://github.com/guilhermeqmaia/soat-fiap-oficina-mecanica-app) | API NestJS, manifestos K8s e documentação |
+| [4 · os-service](https://github.com/guilhermeqmaia/soat-fiap-oficina-os-service) | API NestJS, manifestos K8s e documentação |
 
 ## Estrutura
 
@@ -160,7 +160,7 @@ de auth) — vai para a var `SECURITY_GROUP_IDS` do repo auth-lambda.
 
 **Deploy ativo (desde 15/09/2026):** `https://3jpje9so5m.execute-api.us-east-1.amazonaws.com` — output `api_base_url` do stage
 `gateway/`. Como autenticar e consumir: README do
-[soat-fiap-oficina-mecanica-app](https://github.com/guilhermeqmaia/soat-fiap-oficina-mecanica-app#cicd).
+[soat-fiap-oficina-os-service](https://github.com/guilhermeqmaia/soat-fiap-oficina-os-service#cicd).
 Dashboards do Datadog: [Operação](https://app.datadoghq.com/dashboard/h6d-7ck-wpt/oficina--operacao-negocio) · [Saúde técnica](https://app.datadoghq.com/dashboard/n6g-am5-bat/oficina--saude-tecnica).
 
 ## Documentação

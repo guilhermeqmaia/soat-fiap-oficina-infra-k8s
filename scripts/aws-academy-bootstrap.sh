@@ -72,7 +72,7 @@ set_secret soat-fiap-oficina-infra-db TF_STATE_LOCK_TABLE "$LOCK_TABLE"
 set_var soat-fiap-oficina-infra-db  LAB_ROLE_ARN "$LAB_ROLE_ARN"
 set_var soat-fiap-oficina-infra-k8s LAB_ROLE_ARN "$LAB_ROLE_ARN"
 set_var soat-fiap-oficina-auth-lambda LAMBDA_ROLE_ARN "$LAB_ROLE_ARN"
-for repo in soat-fiap-oficina-infra-db soat-fiap-oficina-infra-k8s soat-fiap-oficina-auth-lambda soat-fiap-oficina-mecanica-app; do
+for repo in soat-fiap-oficina-infra-db soat-fiap-oficina-infra-k8s soat-fiap-oficina-auth-lambda soat-fiap-oficina-os-service; do
   set_var "$repo" AWS_REGION "$REGION"
 done
 

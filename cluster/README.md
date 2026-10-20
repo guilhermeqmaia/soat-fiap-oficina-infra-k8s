@@ -4,10 +4,10 @@ Provisiona a **rede da solução inteira** e o **cluster Kubernetes gerenciado**
 
 - **VPC multi-AZ** (2 AZs): 2 subnets públicas (NAT/IGW) + 2 privadas (nodes,
   RDS, Lambda, VPC Link) — nenhum workload público, só o API Gateway
-  ([ADR-0005](https://github.com/guilhermeqmaia/soat-fiap-oficina-mecanica-app/blob/main/docs/arquitetura/adr/ADR-0005-api-gateway.md));
+  ([ADR-0005](https://github.com/guilhermeqmaia/soat-fiap-oficina-os-service/blob/main/docs/arquitetura/adr/ADR-0005-api-gateway.md));
 - **EKS** com managed node group (2–4 nodes, multi-AZ) e add-ons gerenciados:
   `vpc-cni`, `coredns`, `kube-proxy` e **`metrics-server`** (pré-requisito do
-  HPA — [ADR-0002](https://github.com/guilhermeqmaia/soat-fiap-oficina-mecanica-app/blob/main/docs/arquitetura/adr/ADR-0002-hpa-autoescalonamento.md));
+  HPA — [ADR-0002](https://github.com/guilhermeqmaia/soat-fiap-oficina-os-service/blob/main/docs/arquitetura/adr/ADR-0002-hpa-autoescalonamento.md));
 - **SG do VPC Link** e liberação de tráfego interno da VPC até os nodes.
 
 ## Topologia
