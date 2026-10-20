@@ -2,7 +2,7 @@
 
 Coletores que rodam **no EKS**; a instrumentação da aplicação (traces,
 `/metrics`, métricas de negócio) vive no repo
-[soat-fiap-oficina-mecanica-app](https://github.com/guilhermeqmaia/soat-fiap-oficina-mecanica-app).
+[soat-fiap-oficina-os-service](https://github.com/guilhermeqmaia/soat-fiap-oficina-os-service).
 
 ## Sinais exigidos e onde cada um nasce
 

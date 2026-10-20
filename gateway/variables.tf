@@ -30,7 +30,7 @@ variable "auth_lambda_arn" {
 }
 
 variable "backend_listener_arn" {
-  description = "TRANSICAO (Fase 3): ARN do listener do NLB criado pelo Service LoadBalancer do monolito. Quando informado, as rotas do OS Service usam esse listener em vez do target group NodePort do NLB unico (ate a US-F4-06 trocar o Service para NodePort). Vazio = NLB unico para os 3 servicos."
+  description = "TRANSICAO (Fase 3): ARN do listener do NLB criado pelo Service LoadBalancer do monolito. Quando informado, as rotas do OS Service usam esse listener em vez do target group NodePort do NLB unico (a US-F4-06 trocou o Service do OS para NodePort 30080 — deixe vazio). Vazio = NLB unico para os 3 servicos."
   type        = string
   default     = ""
 

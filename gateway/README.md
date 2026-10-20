@@ -4,7 +4,7 @@ Provisiona o **AWS API Gateway (HTTP API v2)** como **entrada única** das APIs
 da oficina:
 
 - `POST /auth` público, integrado à **Lambda de autenticação por CPF**
-  ([US-F3-01](https://github.com/guilhermeqmaia/soat-fiap-oficina-mecanica-app/blob/main/docs/user-stories/f3-01-serverless-cpf-auth.md));
+  ([US-F3-01](https://github.com/guilhermeqmaia/soat-fiap-oficina-os-service/blob/main/docs/user-stories/f3-01-serverless-cpf-auth.md));
 - **rotas sensíveis** exigem JWT válido, checado por um **Lambda Authorizer**
   (a mesma function da autenticação, com handler de authorizer) antes de
   encaminhar ao backend;
@@ -12,14 +12,14 @@ da oficina:
   **interno** — só o gateway tem URL pública; a aplicação não é acessível por
   fora da VPC (sem bypass do gateway);
 - **throttling**, **CORS** e **access logs JSON** no CloudWatch (insumo da
-  [US-F3-10](https://github.com/guilhermeqmaia/soat-fiap-oficina-mecanica-app/blob/main/docs/user-stories/f3-10-observabilidade-apm.md)).
+  [US-F3-10](https://github.com/guilhermeqmaia/soat-fiap-oficina-os-service/blob/main/docs/user-stories/f3-10-observabilidade-apm.md)).
 
 > **Origem (US-F3-07):** stage desenvolvido no repo da aplicação
-> ([soat-fiap-oficina-mecanica-app](https://github.com/guilhermeqmaia/soat-fiap-oficina-mecanica-app),
+> ([soat-fiap-oficina-os-service](https://github.com/guilhermeqmaia/soat-fiap-oficina-os-service),
 > PR #46) e migrado para cá na segregação em 4 repositórios.
 >
 > **Por que AWS API Gateway (e não Kong/Traefik in-cluster)?** Decisão
-> registrada em ADR ([f3-doc-02](https://github.com/guilhermeqmaia/soat-fiap-oficina-mecanica-app/blob/main/docs/user-stories/f3-doc-02-adrs.md)).
+> registrada em ADR ([f3-doc-02](https://github.com/guilhermeqmaia/soat-fiap-oficina-os-service/blob/main/docs/user-stories/f3-doc-02-adrs.md)).
 > **Por que HTTP API (e não REST API)?** Access logs sem a role de conta do
 > CloudWatch (que não podemos criar no AWS Academy), CORS/throttling nativos,
 > VPC Link para ALB/NLB interno e custo menor.
@@ -67,7 +67,7 @@ O mesmo HTTP API passa a rotear **por prefixo** para três backends, todos atrá
 
 Cada prefixo gera `ANY /p` e `ANY /p/{proxy+}`. `POST /auth` continua na Lambda. Swagger (`/api`) de cada serviço **não** é exposto.
 
-**Transição Fase 3 → 4:** enquanto o OS Service ainda expõe `Service` do tipo LoadBalancer (NLB próprio), informe `backend_listener_arn` e as rotas do OS usam esse listener; com `NodePort 30080` (US-F4-06) deixe vazio e o NLB único assume. O `aws-deploy-all.sh` decide sozinho.
+**Transição Fase 3 → 4:** concluída na US-F4-06 — o OS Service expõe `NodePort 30080`; deixe `backend_listener_arn` vazio e o NLB único assume (o valor só existe para rollback ao Service LoadBalancer da Fase 3). O `aws-deploy-all.sh` decide sozinho.
 
 Entradas novas: `vpc_id`, `cluster_name`, `node_group_name` (stage `cluster`). Saídas: `internal_nlb_dns`, `service_listeners` (porta/NodePort/listener por serviço), `route_map`.
 

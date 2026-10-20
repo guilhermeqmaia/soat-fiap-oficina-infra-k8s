@@ -16,7 +16,7 @@
 set -euo pipefail
 
 OWNER="${GH_OWNER:-guilhermeqmaia}"
-REPOS="${GH_REPOS:-soat-fiap-oficina-mecanica-app soat-fiap-oficina-infra-k8s soat-fiap-oficina-infra-db soat-fiap-oficina-auth-lambda}"
+REPOS="${GH_REPOS:-soat-fiap-oficina-os-service soat-fiap-oficina-infra-k8s soat-fiap-oficina-infra-db soat-fiap-oficina-auth-lambda}"
 PROFILE="default"
 SOURCE="file"
 SAVE=false
@@ -93,7 +93,7 @@ done
 # --- 5. Disparar CD (opcional) --------------------------------------------
 if $DISPATCH && ! $DRY_RUN; then
   for repo in $REPOS; do
-    wf="cd.yml"; [ "$repo" = "soat-fiap-oficina-mecanica-app" ] && wf="cd-aws.yml"
+    wf="cd.yml"; [ "$repo" = "soat-fiap-oficina-os-service" ] && wf="cd-aws.yml"
     gh workflow run "$wf" -R "$OWNER/$repo" --ref main && echo "   $repo: $wf disparado (main)"
   done
 fi

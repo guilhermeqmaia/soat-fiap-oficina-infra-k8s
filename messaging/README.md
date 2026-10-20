@@ -1,6 +1,6 @@
 # Stage messaging — SNS + SQS FIFO (US-F4-02)
 
-Mensageria assíncrona entre os microsserviços da Fase 4 ([RFC-0006](https://github.com/guilhermeqmaia/soat-fiap-oficina-mecanica-app/blob/main/docs/arquitetura/rfcs/RFC-0006-mensageria.md)): **um tópico SNS FIFO por produtor**, **uma fila SQS FIFO por consumidor** com DLQ, assinaturas filtradas por `type` (atributo do envelope — [ADR-0009](https://github.com/guilhermeqmaia/soat-fiap-oficina-mecanica-app/blob/main/docs/arquitetura/adr/ADR-0009-outbox-e-consumidor-idempotente.md)). Mesma topologia do LocalStack do kit (`scripts/messaging-local.sh`).
+Mensageria assíncrona entre os microsserviços da Fase 4 ([RFC-0006](https://github.com/guilhermeqmaia/soat-fiap-oficina-os-service/blob/main/docs/arquitetura/rfcs/RFC-0006-mensageria.md)): **um tópico SNS FIFO por produtor**, **uma fila SQS FIFO por consumidor** com DLQ, assinaturas filtradas por `type` (atributo do envelope — [ADR-0009](https://github.com/guilhermeqmaia/soat-fiap-oficina-os-service/blob/main/docs/arquitetura/adr/ADR-0009-outbox-e-consumidor-idempotente.md)). Mesma topologia do LocalStack do kit (`scripts/messaging-local.sh`).
 
 ```mermaid
 flowchart LR

@@ -28,7 +28,7 @@ tf_obs() {
     terraform init -input=false -reconfigure \
       -backend-config="bucket=$BUCKET" -backend-config="key=oficina-infra-k8s/observability/prod.tfstate" \
       -backend-config="region=${AWS_REGION:-us-east-1}" -backend-config="encrypt=true" >/dev/null
-    GW="${GATEWAY_URL:-$(gh variable get GATEWAY_URL -R "$OWNER/soat-fiap-oficina-mecanica-app" 2>/dev/null || true)}"
+    GW="${GATEWAY_URL:-$(gh variable get GATEWAY_URL -R "$OWNER/soat-fiap-oficina-os-service" 2>/dev/null || true)}"
     terraform "$1" -input=false -auto-approve \
       -var "datadog_api_key=${DD_API_KEY:-}" -var "datadog_app_key=${DD_APP_KEY:-}" \
       -var "gateway_url=$GW" -var "alert_email=${ALERT_EMAIL:-}" | grep -E "complete!|Error|dashboard_.*_url" || true
