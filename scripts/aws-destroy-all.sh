@@ -71,6 +71,14 @@ if tf_has_state "$HERE/gateway"; then
       -var "vpc_link_security_group_ids=$(ghvar soat-fiap-oficina-infra-k8s VPC_LINK_SECURITY_GROUP_IDS)" )
 else echo "   state vazio"; fi
 
+# --- 2b. Mensageria -----------------------------------------------------------
+echo "== messaging"
+tf_init "$HERE/messaging" "oficina-infra-k8s/messaging/$ENV.tfstate"
+if tf_has_state "$HERE/messaging"; then
+  ( cd "$HERE/messaging" && terraform destroy -auto-approve \
+      -var "node_role_name=$(ghvar soat-fiap-oficina-infra-k8s NODE_ROLE_NAME)" )
+else echo "   state vazio"; fi
+
 # --- 3. Lambda de auth --------------------------------------------------------
 echo "== auth-lambda"
 git clone -q "https://github.com/$OWNER/soat-fiap-oficina-auth-lambda" "$WORK/lambda"

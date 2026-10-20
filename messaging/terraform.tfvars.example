@@ -1,0 +1,11 @@
+# Stage messaging — exemplo de variaveis (copie para terraform.tfvars; nao versionar).
+aws_region   = "us-east-1"
+project_name = "oficina-mecanica"
+name_prefix  = "oficina"
+
+# Conta propria: nome da role dos nodes (output node_role_arn do stage cluster, so o nome).
+# AWS Academy: deixe vazio (LabRole).
+node_role_name = "oficina-mecanica-eks-node-role"
+
+# E-mail dos alarmes de DLQ (vazio = sem notificacao).
+alert_email = ""

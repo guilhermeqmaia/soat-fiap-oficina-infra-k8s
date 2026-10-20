@@ -12,7 +12,7 @@
 # alias a acompanha; ele so faz sentido em push de codigo novo.
 #
 # Uso: scripts/aws-deploy-all.sh [--profile oficina] [--env prod] [--no-seed] [--from <etapa>] [--observability datadog|prometheus|none]
-#   --from cluster|db|lambda|app|gateway|url|seed   retoma a partir de uma etapa
+#   --from cluster|messaging|db|lambda|app|gateway|url|seed   retoma a partir de uma etapa
 # Pre-requisitos: aws, kubectl, gh (logado), python3, curl. Vars/secrets
 # estaveis ja criados pelo aws-account-bootstrap.sh. Do zero: ~30 min.
 set -euo pipefail
@@ -37,6 +37,7 @@ REGION="${AWS_REGION:-us-east-1}"
 PROJECT="${PROJECT_NAME:-oficina-mecanica}"
 R_K8S="$OWNER/soat-fiap-oficina-infra-k8s"; R_DB="$OWNER/soat-fiap-oficina-infra-db"
 R_LAMBDA="$OWNER/soat-fiap-oficina-auth-lambda"; R_APP="$OWNER/soat-fiap-oficina-mecanica-app"
+R_BILLING="$OWNER/soat-fiap-oficina-billing-service"; R_EXEC="$OWNER/soat-fiap-oficina-execucao-service"
 export AWS_PROFILE="$PROFILE" AWS_DEFAULT_REGION="$REGION"
 ACCOUNT="$(aws sts get-caller-identity --query Account --output text)"
 BUCKET="${TF_STATE_BUCKET:-soat-oficina-tfstate-$ACCOUNT}"
@@ -44,7 +45,7 @@ BRANCH="main"; [ "$ENV" = "prod" ] || BRANCH="homolog"
 START=$(date +%s)
 log() { printf '\n[%s +%dmin] %s\n' "$(date -u +%H:%M)" $(( ($(date +%s)-START)/60 )) "$*"; }
 setvar() { gh variable set "$2" -R "$1" --body "$3" >/dev/null && echo "   $1 :: $2 = $3"; }
-stages=(cluster db lambda app gateway url seed); idx() { local i=0; for s in "${stages[@]}"; do [ "$s" = "$1" ] && { echo $i; return; }; i=$((i+1)); done; echo 99; }
+stages=(cluster messaging db lambda app gateway url seed); idx() { local i=0; for s in "${stages[@]}"; do [ "$s" = "$1" ] && { echo $i; return; }; i=$((i+1)); done; echo 99; }
 skip() { [ "$(idx "$1")" -lt "$(idx "$FROM")" ]; }
 
 # dispatch_wf <repo> <workflow> [-f k=v ...]  -> imprime o id do run
@@ -103,6 +104,14 @@ setvar "$R_DB" VPC_ID "$VPC_ID"; setvar "$R_DB" DB_SUBNET_IDS "$SUBNETS"; setvar
 setvar "$R_LAMBDA" SUBNET_IDS "$SUBNETS"; setvar "$R_LAMBDA" SECURITY_GROUP_IDS "[\"$LAMBDA_SG\"]"
 setvar "$R_K8S" VPC_LINK_SUBNET_IDS "$SUBNETS"; setvar "$R_K8S" VPC_LINK_SECURITY_GROUP_IDS "[\"$VPC_LINK_SG\"]"
 setvar "$R_APP" EKS_CLUSTER_NAME "$CLUSTER"
+
+# --- 1b. Mensageria (SNS/SQS; so a policy IAM depende da role dos nodes) ----------
+if ! skip messaging; then
+  log "mensageria: SNS + SQS FIFO + DLQ (~1 min)"
+  setvar "$R_K8S" NODE_ROLE_NAME "$PROJECT-eks-node-role"
+  run_wf "$R_K8S" cd.yml -f action=apply -f stage=messaging
+  "$(dirname "$0")/messaging-vars.sh" --profile "$PROFILE"
+fi
 
 # --- 2. RDS (enquanto o EKS sobe) -------------------------------------------------
 if ! skip db; then
