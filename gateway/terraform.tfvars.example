@@ -6,6 +6,7 @@
 auth_lambda_arn = "arn:aws:lambda:us-east-1:123456789012:function:oficina-auth-cpf"
 
 # Listener do ALB/NLB **interno** que expoe a aplicacao no EKS (US-F3-05/06)
+# Fase 4: vazio => NLB unico deste stage (ADR-0013). Preencha so na transicao com o NLB do Service da Fase 3.
 backend_listener_arn = "arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/app/k8s-oficina/50dc6c495c0c9188/f2f7dc8efc522ab2"
 
 # Rede da VPC do EKS para as ENIs do VPC Link (US-F3-05)
@@ -17,3 +18,8 @@ vpc_link_security_group_ids = ["sg-0123456789abcdef0"]
 # throttling_rate_limit  = 20
 # throttling_burst_limit = 40
 # cors_allowed_origins   = ["https://admin.oficina.example.com", "https://cliente.oficina.example.com"]
+
+# Fase 4 (US-F4-05): VPC e node group do stage cluster (target groups do NLB unico).
+vpc_id          = "vpc-0123456789abcdef0"
+cluster_name    = "oficina-mecanica-eks"
+node_group_name = "oficina-mecanica-nodes"

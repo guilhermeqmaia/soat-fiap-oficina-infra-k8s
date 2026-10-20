@@ -55,6 +55,22 @@ sequenceDiagram
     G-->>C: 401 Unauthorized (nem chega ao backend)
 ```
 
+## Fase 4 — gateway multi-serviço (US-F4-05 / ADR-0013)
+
+O mesmo HTTP API passa a rotear **por prefixo** para três backends, todos atrás de **um único NLB interno** criado neste stage (`nlb.tf`): um listener/target group por serviço apontando para o **NodePort fixo** do Service de cada repo (overlay `k8s-aws/`). Sem Load Balancer Controller (exigiria IRSA) e sem um NLB por Service (custo ×3).
+
+| Serviço | Listener | NodePort | Prefixos protegidos (JWT) | Rotas públicas |
+|---|---|---|---|---|
+| OS Service (`oficina-app`) | 3000 | 30080 | `/ordens-servico`, `/clientes`, `/veiculos`, `/usuario`, `/notificacoes`, `/auth/me` + catch-all `ANY /{proxy+}` (compat. Fase 3) | `/health*`, status de OS por número, webhooks de aprovação |
+| Billing | 3001 | 30081 | `/orcamentos`, `/pagamentos` | `POST /webhooks/mercadopago` (assinatura validada no serviço) |
+| Execução | 3002 | 30082 | `/execucao`, `/catalogo`, `/estoque` | — |
+
+Cada prefixo gera `ANY /p` e `ANY /p/{proxy+}`. `POST /auth` continua na Lambda. Swagger (`/api`) de cada serviço **não** é exposto.
+
+**Transição Fase 3 → 4:** enquanto o OS Service ainda expõe `Service` do tipo LoadBalancer (NLB próprio), informe `backend_listener_arn` e as rotas do OS usam esse listener; com `NodePort 30080` (US-F4-06) deixe vazio e o NLB único assume. O `aws-deploy-all.sh` decide sozinho.
+
+Entradas novas: `vpc_id`, `cluster_name`, `node_group_name` (stage `cluster`). Saídas: `internal_nlb_dns`, `service_listeners` (porta/NodePort/listener por serviço), `route_map`.
+
 ## Mapa de rotas
 
 Espelha os endpoints `@Public()` do monólito — qualquer outro path com ao

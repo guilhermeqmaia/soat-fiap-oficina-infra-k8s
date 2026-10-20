@@ -67,6 +67,8 @@ if tf_has_state "$HERE/gateway"; then
   ( cd "$HERE/gateway" && terraform destroy -auto-approve \
       -var "auth_lambda_arn=$(ghvar soat-fiap-oficina-infra-k8s AUTH_LAMBDA_ARN)" \
       -var "backend_listener_arn=$(ghvar soat-fiap-oficina-infra-k8s BACKEND_LISTENER_ARN)" \
+      -var "vpc_id=$(ghvar soat-fiap-oficina-infra-k8s VPC_ID)" \
+      -var "cluster_name=$(ghvar soat-fiap-oficina-infra-k8s EKS_CLUSTER_NAME)" \
       -var "vpc_link_subnet_ids=$(ghvar soat-fiap-oficina-infra-k8s VPC_LINK_SUBNET_IDS)" \
       -var "vpc_link_security_group_ids=$(ghvar soat-fiap-oficina-infra-k8s VPC_LINK_SECURITY_GROUP_IDS)" )
 else echo "   state vazio"; fi
