@@ -31,7 +31,9 @@ case "$stage" in
     ;;
   gateway)
     emit auth_lambda_arn "${AUTH_LAMBDA_ARN:-}"
-    emit backend_listener_arn "${BACKEND_LISTENER_ARN:-}"
+    emit backend_listener_arn "${BACKEND_LISTENER_ARN:-}" # vazio => NLB unico (Fase 4)
+    emit vpc_id "${VPC_ID:-}"
+    emit cluster_name "${EKS_CLUSTER_NAME:-}"
     emit_raw vpc_link_subnet_ids "${VPC_LINK_SUBNET_IDS:-}"
     emit_raw vpc_link_security_group_ids "${VPC_LINK_SECURITY_GROUP_IDS:-}"
     ;;

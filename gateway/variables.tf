@@ -30,17 +30,61 @@ variable "auth_lambda_arn" {
 }
 
 variable "backend_listener_arn" {
-  description = "ARN do listener do ALB/NLB interno que expoe o Service/Ingress da aplicacao no EKS (US-F3-05/06). O gateway alcanca o backend so por dentro da VPC."
+  description = "TRANSICAO (Fase 3): ARN do listener do NLB criado pelo Service LoadBalancer do monolito. Quando informado, as rotas do OS Service usam esse listener em vez do target group NodePort do NLB unico (ate a US-F4-06 trocar o Service para NodePort). Vazio = NLB unico para os 3 servicos."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.backend_listener_arn == "" || startswith(var.backend_listener_arn, "arn:aws:elasticloadbalancing:")
+    error_message = "backend_listener_arn deve ser vazio ou um ARN de listener de ELB."
+  }
+}
+
+variable "vpc_id" {
+  description = "VPC do cluster (output vpc_id do stage cluster) — target groups do NLB unico (ADR-0013)."
   type        = string
 
   validation {
-    condition     = startswith(var.backend_listener_arn, "arn:aws:elasticloadbalancing:")
-    error_message = "backend_listener_arn deve ser um ARN de listener de ELB (arn:aws:elasticloadbalancing:...)."
+    condition     = startswith(var.vpc_id, "vpc-")
+    error_message = "vpc_id deve ser um id de VPC (vpc-...)."
   }
+}
 
-  validation {
-    condition     = split(":", var.backend_listener_arn)[3] == var.aws_region
-    error_message = "A regiao do backend_listener_arn difere de aws_region."
+variable "cluster_name" {
+  description = "Nome do cluster EKS (output cluster_name do stage cluster) — usado para achar o Auto Scaling Group dos nodes e registra-lo nos target groups."
+  type        = string
+  default     = "oficina-mecanica-eks"
+}
+
+variable "node_group_name" {
+  description = "Nome do managed node group (stage cluster)."
+  type        = string
+  default     = "oficina-mecanica-nodes"
+}
+
+variable "services" {
+  description = "Microsservicos atras do gateway (ADR-0013): porta do container, NodePort fixo (overlay k8s-aws de cada repo) e prefixos de rota. O NLB unico tem um listener/target group por servico."
+  type = map(object({
+    port      = number
+    node_port = number
+    prefixes  = list(string)
+  }))
+  default = {
+    os = {
+      port      = 3000
+      node_port = 30080
+      prefixes  = ["/ordens-servico", "/clientes", "/veiculos", "/usuario", "/notificacoes", "/auth/me"]
+    }
+    billing = {
+      port      = 3001
+      node_port = 30081
+      prefixes  = ["/orcamentos", "/pagamentos"]
+    }
+    execucao = {
+      port      = 3002
+      node_port = 30082
+      prefixes  = ["/execucao", "/catalogo", "/estoque"]
+    }
   }
 }
 

@@ -60,7 +60,7 @@ jobs:
           [ -n "${{ secrets.TF_STATE_BUCKET }}" ] || ok=false
           if [ "${{ matrix.stage }}" != "cluster" ]; then
             # gateway depende dos outputs da Lambda (US-F3-01) e do deploy no EKS (US-F3-06)
-            [ -n "${{ vars.AUTH_LAMBDA_ARN }}" ] && [ -n "${{ vars.BACKEND_LISTENER_ARN }}" ] \
+            [ -n "${{ vars.AUTH_LAMBDA_ARN }}" ] && [ -n "${{ vars.VPC_ID }}" ] \
               && [ -n "${{ vars.VPC_LINK_SUBNET_IDS }}" ] && [ -n "${{ vars.VPC_LINK_SECURITY_GROUP_IDS }}" ] || ok=false
           fi
           echo "configured=$ok" >> "$GITHUB_OUTPUT"
@@ -100,7 +100,7 @@ jobs:
           CLUSTER_ADMIN_ARNS: ${{ vars.CLUSTER_ADMIN_ARNS }}
           NODE_INSTANCE_TYPES: ${{ vars.NODE_INSTANCE_TYPES }}
           AUTH_LAMBDA_ARN: ${{ vars.AUTH_LAMBDA_ARN }}
-          BACKEND_LISTENER_ARN: ${{ vars.BACKEND_LISTENER_ARN }}
+          VPC_ID: ${{ vars.VPC_ID }}
           VPC_LINK_SUBNET_IDS: ${{ vars.VPC_LINK_SUBNET_IDS }}
           VPC_LINK_SECURITY_GROUP_IDS: ${{ vars.VPC_LINK_SECURITY_GROUP_IDS }}
 

@@ -7,8 +7,8 @@ provider "aws" {
   default_tags {
     tags = {
       Project   = var.project_name
-      Fase      = "fase-3"
-      Story     = "US-F3-02"
+      Fase      = "fase-4"
+      Story     = "US-F3-02 / US-F4-05"
       ManagedBy = "terraform"
     }
   }

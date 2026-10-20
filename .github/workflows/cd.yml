@@ -77,7 +77,7 @@ jobs:
           { [ -n "${{ secrets.AWS_ROLE_ARN }}" ] || [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; } || ok=false
           [ -n "${{ secrets.TF_STATE_BUCKET }}" ] || ok=false
           if [ "${{ matrix.stage }}" = "gateway" ]; then
-            [ -n "${{ vars.AUTH_LAMBDA_ARN }}" ] && [ -n "${{ vars.BACKEND_LISTENER_ARN }}" ] \
+            [ -n "${{ vars.AUTH_LAMBDA_ARN }}" ] && [ -n "${{ vars.VPC_ID }}" ] \
               && [ -n "${{ vars.VPC_LINK_SUBNET_IDS }}" ] && [ -n "${{ vars.VPC_LINK_SECURITY_GROUP_IDS }}" ] || ok=false
           fi
           # messaging: so credenciais + bucket (SNS/SQS nao dependem do cluster).
@@ -124,6 +124,8 @@ jobs:
           VPC_LINK_SUBNET_IDS: ${{ vars.VPC_LINK_SUBNET_IDS }}
           VPC_LINK_SECURITY_GROUP_IDS: ${{ vars.VPC_LINK_SECURITY_GROUP_IDS }}
           NODE_ROLE_NAME: ${{ vars.NODE_ROLE_NAME }}
+          VPC_ID: ${{ vars.VPC_ID }}
+          EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}
           ALERT_EMAIL: ${{ vars.ALERT_EMAIL }}
 
       - name: Outputs do stage

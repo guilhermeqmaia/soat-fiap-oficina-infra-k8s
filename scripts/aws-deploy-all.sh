@@ -103,6 +103,7 @@ log "contratos de rede"
 setvar "$R_DB" VPC_ID "$VPC_ID"; setvar "$R_DB" DB_SUBNET_IDS "$SUBNETS"; setvar "$R_DB" DB_ALLOWED_CIDRS "[\"$VPC_CIDR\"]"
 setvar "$R_LAMBDA" SUBNET_IDS "$SUBNETS"; setvar "$R_LAMBDA" SECURITY_GROUP_IDS "[\"$LAMBDA_SG\"]"
 setvar "$R_K8S" VPC_LINK_SUBNET_IDS "$SUBNETS"; setvar "$R_K8S" VPC_LINK_SECURITY_GROUP_IDS "[\"$VPC_LINK_SG\"]"
+setvar "$R_K8S" VPC_ID "$VPC_ID"; setvar "$R_K8S" EKS_CLUSTER_NAME "$CLUSTER"
 setvar "$R_APP" EKS_CLUSTER_NAME "$CLUSTER"
 
 # --- 1b. Mensageria (SNS/SQS; so a policy IAM depende da role dos nodes) ----------
@@ -141,10 +142,17 @@ if ! skip app; then
   run_wf "$R_APP" cd-aws.yml
 fi
 aws eks update-kubeconfig --name "$CLUSTER" >/dev/null
-NLB=$(kubectl -n oficina get svc oficina-app -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-LB_ARN=$(aws elbv2 describe-load-balancers --query "LoadBalancers[?DNSName=='$NLB'].LoadBalancerArn" --output text)
-LISTENER=$(aws elbv2 describe-listeners --load-balancer-arn "$LB_ARN" --query 'Listeners[0].ListenerArn' --output text)
-log "contrato do backend"; setvar "$R_K8S" BACKEND_LISTENER_ARN "$LISTENER"
+# Transicao Fase 3 -> 4: enquanto o OS Service expuser Service LoadBalancer
+# (NLB proprio), o gateway usa esse listener; com NodePort (US-F4-06) a var
+# fica vazia e o NLB unico do stage gateway assume (ADR-0013).
+NLB=$(kubectl -n oficina get svc oficina-app -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
+if [ -n "$NLB" ]; then
+  LB_ARN=$(aws elbv2 describe-load-balancers --query "LoadBalancers[?DNSName=='$NLB'].LoadBalancerArn" --output text)
+  LISTENER=$(aws elbv2 describe-listeners --load-balancer-arn "$LB_ARN" --query 'Listeners[0].ListenerArn' --output text)
+  log "contrato do backend (transicao: NLB do Service)"; setvar "$R_K8S" BACKEND_LISTENER_ARN "$LISTENER"
+else
+  log "contrato do backend: NLB unico do stage gateway (NodePort)"; gh variable delete BACKEND_LISTENER_ARN -R "$R_K8S" 2>/dev/null || true
+fi
 
 # --- 5. Gateway (so o stage gateway) ----------------------------------------------
 if ! skip gateway; then

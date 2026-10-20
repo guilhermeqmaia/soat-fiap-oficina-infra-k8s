@@ -50,35 +50,51 @@ resource "aws_lambda_permission" "auth" {
   source_arn    = "${aws_apigatewayv2_api.this.execution_arn}/*/*/auth"
 }
 
-# ── Backend no EKS via VPC Link (integracao privada compartilhada) ───────────
-# O HTTP API repassa method + path como recebidos ao listener interno, entao
-# uma unica integracao ANY atende rotas publicas e protegidas.
+# ── Backends no EKS via VPC Link: uma integracao por servico (ADR-0013) ──────
+# O HTTP API repassa method + path como recebidos ao listener interno do
+# servico; as rotas abaixo decidem qual integracao atende cada prefixo.
 
-resource "aws_apigatewayv2_integration" "backend" {
+resource "aws_apigatewayv2_integration" "service" {
+  for_each = var.services
+
   api_id             = aws_apigatewayv2_api.this.id
   integration_type   = "HTTP_PROXY"
   integration_method = "ANY"
-  integration_uri    = var.backend_listener_arn
+  integration_uri    = local.service_listener_arns[each.key]
   connection_type    = "VPC_LINK"
   connection_id      = aws_apigatewayv2_vpc_link.eks.id
 }
 
-# ── Rotas publicas do backend (health, status de OS, webhooks de aprovacao) ──
+# ── Rotas publicas por servico (health, status de OS, webhooks) ──────────────
 
-resource "aws_apigatewayv2_route" "public_backend" {
-  for_each = toset(local.public_backend_route_keys)
+resource "aws_apigatewayv2_route" "public" {
+  for_each = local.public_route_keys
 
   api_id    = aws_apigatewayv2_api.this.id
-  route_key = each.value
-  target    = "integrations/${aws_apigatewayv2_integration.backend.id}"
+  route_key = each.value.key
+  target    = "integrations/${aws_apigatewayv2_integration.service[each.value.service].id}"
 }
 
-# ── Rotas sensiveis: catch-all protegido pelo authorizer ─────────────────────
+# ── Rotas sensiveis por prefixo, protegidas pelo authorizer ──────────────────
 
 resource "aws_apigatewayv2_route" "protected" {
+  for_each = local.protected_route_keys
+
+  api_id             = aws_apigatewayv2_api.this.id
+  route_key          = each.value.key
+  target             = "integrations/${aws_apigatewayv2_integration.service[each.value.service].id}"
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
+}
+
+# ── Catch-all protegido -> OS Service (compatibilidade com a Fase 3) ─────────
+# Qualquer rota nao listada nos prefixos continua chegando ao monolito/OS
+# Service — some conforme a US-F4-06 remove modulos dele.
+
+resource "aws_apigatewayv2_route" "catch_all" {
   api_id             = aws_apigatewayv2_api.this.id
   route_key          = "ANY /{proxy+}"
-  target             = "integrations/${aws_apigatewayv2_integration.backend.id}"
+  target             = "integrations/${aws_apigatewayv2_integration.service["os"].id}"
   authorization_type = "CUSTOM"
   authorizer_id      = aws_apigatewayv2_authorizer.jwt.id
 }

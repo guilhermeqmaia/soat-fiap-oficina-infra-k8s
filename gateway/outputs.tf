@@ -24,3 +24,28 @@ output "access_log_group" {
   description = "Log group dos access logs do gateway (fonte para a observabilidade — US-F3-10)."
   value       = aws_cloudwatch_log_group.access_logs.name
 }
+
+
+# ─── Fase 4 (US-F4-05) ────────────────────────────────────────────────────────
+
+output "internal_nlb_dns" {
+  description = "DNS do NLB interno unico (um listener por servico)."
+  value       = aws_lb.internal.dns_name
+}
+
+output "service_listeners" {
+  description = "Porta do listener e NodePort de cada servico no NLB unico (contrato com o overlay k8s-aws de cada repo)."
+  value = {
+    for svc, cfg in var.services : svc => {
+      listener_arn = aws_lb_listener.service[svc].arn
+      port         = cfg.port
+      node_port    = cfg.node_port
+      prefixes     = cfg.prefixes
+    }
+  }
+}
+
+output "route_map" {
+  description = "Prefixos protegidos por servico (documentacao viva do mapa de rotas)."
+  value       = { for svc, cfg in var.services : svc => cfg.prefixes }
+}
