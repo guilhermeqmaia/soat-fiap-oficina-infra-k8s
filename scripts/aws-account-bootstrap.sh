@@ -11,7 +11,7 @@
 set -euo pipefail
 
 OWNER="${GH_OWNER:-guilhermeqmaia}"
-REPOS="soat-fiap-oficina-mecanica-app soat-fiap-oficina-infra-k8s soat-fiap-oficina-infra-db soat-fiap-oficina-auth-lambda"
+REPOS="soat-fiap-oficina-mecanica-app soat-fiap-oficina-infra-k8s soat-fiap-oficina-infra-db soat-fiap-oficina-auth-lambda soat-fiap-oficina-billing-service soat-fiap-oficina-execucao-service"
 REGION="${AWS_REGION:-us-east-1}"
 ROLE_NAME="github-actions-oficina"
 PROFILE="oficina"
