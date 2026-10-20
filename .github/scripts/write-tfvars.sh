@@ -25,6 +25,10 @@ case "$stage" in
     emit_raw cluster_admin_arns "${CLUSTER_ADMIN_ARNS:-}"   # ex.: ["arn:aws:iam::123:user/x"]
     emit_raw node_instance_types "${NODE_INSTANCE_TYPES:-}" # ex.: ["m7i-flex.large"] (plano Free: so tipos free-tier-eligible)
     ;;
+  messaging)
+    emit node_role_name "${NODE_ROLE_NAME:-}" # vazio => Academy (LabRole) ou anexar a policy a mao
+    emit alert_email "${ALERT_EMAIL:-}"
+    ;;
   gateway)
     emit auth_lambda_arn "${AUTH_LAMBDA_ARN:-}"
     emit backend_listener_arn "${BACKEND_LISTENER_ARN:-}"
