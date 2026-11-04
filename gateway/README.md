@@ -55,17 +55,21 @@ sequenceDiagram
     G-->>C: 401 Unauthorized (nem chega ao backend)
 ```
 
-## Fase 4 — gateway multi-serviço (US-F4-05 / ADR-0013)
+## Fase 4 — gateway multi-serviço (US-F4-05 / ADR-0013 / RFC-0008)
 
-O mesmo HTTP API passa a rotear **por prefixo** para três backends, todos atrás de **um único NLB interno** criado neste stage (`nlb.tf`): um listener/target group por serviço apontando para o **NodePort fixo** do Service de cada repo (overlay `k8s-aws/`). Sem Load Balancer Controller (exigiria IRSA) e sem um NLB por Service (custo ×3).
+O mesmo HTTP API passa a rotear **por prefixo** para três backends, todos atrás de **um único NLB interno** criado neste stage (`nlb.tf`): um listener/target group por serviço apontando para o **NodePort fixo** do Service de cada repo (overlay `k8s-aws/`). Sem Load Balancer Controller (exigiria IRSA) e sem um NLB por Service (custo ×3). **Todos os serviços ficam atrás do gateway** — nenhum deles tem URL pública própria.
 
 | Serviço | Listener | NodePort | Prefixos protegidos (JWT) | Rotas públicas |
 |---|---|---|---|---|
-| OS Service (`oficina-app`) | 3000 | 30080 | `/ordens-servico`, `/clientes`, `/veiculos`, `/usuario`, `/notificacoes`, `/auth/me` + catch-all `ANY /{proxy+}` (compat. Fase 3) | `/health*`, status de OS por número, webhooks de aprovação |
-| Billing | 3001 | 30081 | `/orcamentos`, `/pagamentos` | `POST /webhooks/mercadopago` (assinatura validada no serviço) |
-| Execução | 3002 | 30082 | `/execucao`, `/catalogo`, `/estoque` | — |
+| OS Service (`oficina-app`) | 3000 | 30080 | `/ordens-servico`, `/clientes`, `/veiculos`, `/usuario`, `/notificacoes`, `/auth/me`, `/admin` + catch-all `ANY /{proxy+}` (compat. Fase 3) | `GET /health*`, `GET /ordens-servico/numero/{numero}/status` |
+| Billing (`oficina-billing-service`) | 3001 | 30081 | `/orcamentos`, `/pagamentos`, `/webhooks` | `POST /webhooks/mercadopago` (assinatura `x-signature` validada no serviço) |
+| Execução (`oficina-execucao-service`) | 3002 | 30082 | `/execucao`, `/catalogo`, `/estoque` | — |
 
-Cada prefixo gera `ANY /p` e `ANY /p/{proxy+}`. `POST /auth` continua na Lambda. Swagger (`/api`) de cada serviço **não** é exposto.
+Cada prefixo gera `ANY /p` e `ANY /p/{proxy+}`. `POST /auth` continua na Lambda. Swagger (`/api`) de cada serviço **não** é exposto. As rotas públicas são mais específicas que os prefixos, então vencem na resolução do HTTP API (ex.: `POST /webhooks/mercadopago` é pública mesmo com `ANY /webhooks/{proxy+}` protegida). Para alterar o mapa, edite `var.services` em [`variables.tf`](variables.tf) (prefixos protegidos) e `local.public_routes` em [`locals.tf`](locals.tf) (rotas `@Public()`).
+
+### Comunicação entre os serviços não passa pelo gateway
+
+A decisão de 03/11/2026 ([RFC-0008](https://github.com/guilhermeqmaia/soat-fiap-oficina-os-service/tree/main/docs/arquitetura/rfcs), contrato em [`docs/contratos/http-interno.md`](https://github.com/guilhermeqmaia/soat-fiap-oficina-os-service/blob/main/docs/contratos/http-interno.md)) trocou a mensageria SNS/SQS por **HTTP síncrono entre os serviços**. Essas chamadas (OS → Execução/Billing e os callbacks `POST /ordens-servico/{numero}/eventos` de volta ao OS) usam o **DNS interno do cluster** — `http://oficina-app:3000`, `http://oficina-billing-service:3001`, `http://oficina-execucao-service:3002` no namespace `oficina` — com JWT de serviço (`role: SERVICO`) assinado com o mesmo `JWT_SECRET` da Lambda. Elas **não** entram pelo gateway nem pelo NLB interno: o gateway é só a borda para clientes e staff. Consequências para este stage: nenhum recurso de mensageria (o antigo stage `messaging/` foi removido), nenhuma policy IAM extra nos nodes e nenhuma rota interna exposta — os endpoints internos dos serviços só aceitam o role `SERVICO`, então mesmo chegando pelo gateway com um JWT de usuário são recusados.
 
 **Transição Fase 3 → 4:** concluída na US-F4-06 — o OS Service expõe `NodePort 30080`; deixe `backend_listener_arn` vazio e o NLB único assume (o valor só existe para rollback ao Service LoadBalancer da Fase 3). O `aws-deploy-all.sh` decide sozinho.
 
@@ -73,8 +77,8 @@ Entradas novas: `vpc_id`, `cluster_name`, `node_group_name` (stage `cluster`). S
 
 ## Mapa de rotas
 
-Espelha os endpoints `@Public()` do monólito — qualquer outro path com ao
-menos um segmento cai no catch-all protegido. Exceção: o path raiz (`GET /`)
+Espelha os endpoints `@Public()` dos serviços — qualquer outro path com ao
+menos um segmento cai nos prefixos protegidos ou no catch-all protegido. Exceção: o path raiz (`GET /`)
 não casa com `{proxy+}` e recebe o 404 do próprio API Gateway — uptime checks
 devem apontar para `/health`, nunca para a raiz.
 
@@ -82,10 +86,10 @@ devem apontar para `/health`, nunca para a raiz.
 |---|---|---|
 | `POST /auth` | Lambda CPF | pública |
 | `GET /health`, `GET /health/ready` | EKS | pública (healthcheck) |
-| `GET /ordens-servico/numero/{numero}/status` | EKS | pública (cliente acompanha a OS) |
-| `POST /webhooks/ordens-servico/{id}/aprovacao` | EKS | pública (token/HMAC na app) |
-| `GET /webhooks/ordens-servico/{id}/aprovar` e `/rejeitar` | EKS | pública (link de e-mail) |
-| `ANY /{proxy+}` (todo o resto) | EKS | **JWT via Lambda Authorizer** |
+| `GET /ordens-servico/numero/{numero}/status` | EKS (OS) | pública (cliente acompanha a OS) |
+| `POST /webhooks/mercadopago` | EKS (Billing) | pública (assinatura do Mercado Pago validada no serviço) |
+| `ANY /{prefixo}` e `ANY /{prefixo}/{proxy+}` (tabela acima) | EKS (serviço do prefixo) | **JWT via Lambda Authorizer** |
+| `ANY /{proxy+}` (todo o resto) | EKS (OS) | **JWT via Lambda Authorizer** |
 
 ## Pré-requisitos (outputs de outras stories)
 

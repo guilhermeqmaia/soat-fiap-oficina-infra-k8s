@@ -63,7 +63,7 @@ variable "node_group_name" {
 }
 
 variable "services" {
-  description = "Microsservicos atras do gateway (ADR-0013): porta do container, NodePort fixo (overlay k8s-aws de cada repo) e prefixos de rota. O NLB unico tem um listener/target group por servico."
+  description = "Microsservicos atras do gateway (ADR-0013, RFC-0008): porta do container, NodePort fixo (overlay k8s-aws de cada repo) e prefixos de rota. O NLB unico tem um listener/target group por servico. Os TRES servicos ficam atras do gateway; as chamadas ENTRE eles nao passam por aqui (DNS interno do cluster)."
   type = map(object({
     port      = number
     node_port = number
@@ -73,12 +73,12 @@ variable "services" {
     os = {
       port      = 3000
       node_port = 30080
-      prefixes  = ["/ordens-servico", "/clientes", "/veiculos", "/usuario", "/notificacoes", "/auth/me"]
+      prefixes  = ["/ordens-servico", "/clientes", "/veiculos", "/usuario", "/notificacoes", "/auth/me", "/admin"]
     }
     billing = {
       port      = 3001
       node_port = 30081
-      prefixes  = ["/orcamentos", "/pagamentos"]
+      prefixes  = ["/orcamentos", "/pagamentos", "/webhooks"]
     }
     execucao = {
       port      = 3002

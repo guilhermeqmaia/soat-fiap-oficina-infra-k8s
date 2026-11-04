@@ -2,14 +2,13 @@ name: CD - Terraform apply
 
 # Deploy automatico da infraestrutura: push em `homolog` aplica no ambiente de
 # homologacao; push em `main` aplica em producao (branch protegida — o apply so
-# acontece depois do PR aprovado/mergeado). Ordem: cluster -> messaging -> gateway.
+# acontece depois do PR aprovado/mergeado). Ordem: cluster -> gateway.
 
 on:
   push:
     branches: [main, homolog]
     paths:
       - 'cluster/**'
-      - 'messaging/**'
       - 'gateway/**'
       - '.github/workflows/cd.yml'
       - '.github/scripts/write-tfvars.sh'
@@ -21,9 +20,9 @@ on:
         options: [plan, apply, destroy]
         default: plan
       stage:
-        description: Stage (all = cluster, messaging e depois gateway)
+        description: Stage (all = cluster e depois gateway)
         type: choice
-        options: [all, cluster, messaging, gateway]
+        options: [all, cluster, gateway]
         default: all
 
 permissions:
@@ -62,7 +61,7 @@ jobs:
       matrix:
         # Push e dispatch "all": cluster e depois gateway. O aws-deploy-all.sh
         # dispara so o gateway quando o cluster ja esta pronto (evita replanejar).
-        stage: ${{ fromJSON(inputs.stage == 'cluster' && '["cluster"]' || inputs.stage == 'messaging' && '["messaging"]' || inputs.stage == 'gateway' && '["gateway"]' || '["cluster","messaging","gateway"]') }}
+        stage: ${{ fromJSON(inputs.stage == 'cluster' && '["cluster"]' || inputs.stage == 'gateway' && '["gateway"]' || '["cluster","gateway"]') }}
     env:
       AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
       TF_ENV: ${{ needs.resolve.outputs.tf_env }}
@@ -80,7 +79,6 @@ jobs:
             [ -n "${{ vars.AUTH_LAMBDA_ARN }}" ] && [ -n "${{ vars.VPC_ID }}" ] \
               && [ -n "${{ vars.VPC_LINK_SUBNET_IDS }}" ] && [ -n "${{ vars.VPC_LINK_SECURITY_GROUP_IDS }}" ] || ok=false
           fi
-          # messaging: so credenciais + bucket (SNS/SQS nao dependem do cluster).
           echo "configured=$ok" >> "$GITHUB_OUTPUT"
           [ "$ok" = true ] || echo "::warning::Apply de ${{ matrix.stage }} IGNORADO — configure secrets/vars (README secao CI/CD). O run fica verde, mas nada foi aplicado."
 
@@ -123,10 +121,8 @@ jobs:
           BACKEND_LISTENER_ARN: ${{ vars.BACKEND_LISTENER_ARN }}
           VPC_LINK_SUBNET_IDS: ${{ vars.VPC_LINK_SUBNET_IDS }}
           VPC_LINK_SECURITY_GROUP_IDS: ${{ vars.VPC_LINK_SECURITY_GROUP_IDS }}
-          NODE_ROLE_NAME: ${{ vars.NODE_ROLE_NAME }}
           VPC_ID: ${{ vars.VPC_ID }}
           EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}
-          ALERT_EMAIL: ${{ vars.ALERT_EMAIL }}
 
       - name: Outputs do stage
         if: steps.guard.outputs.configured == 'true' && env.TF_ACTION == 'apply'

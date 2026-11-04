@@ -36,11 +36,10 @@ flowchart LR
 
 ## Estrutura
 
-> **Fase 4:** `messaging/` (SNS/SQS FIFO + DLQ — US-F4-02) e o `gateway/` multi-serviço (US-F4-05). Ver os READMEs de cada stage.
+> **Fase 4:** o `gateway/` passa a ser multi-serviço (US-F4-05): OS, Billing e Execução atrás do mesmo API Gateway, roteados por prefixo. A comunicação **entre** os serviços é HTTP direto pelo DNS interno do cluster (RFC-0008) — não existe mais o stage de mensageria (SNS/SQS).
 
 | Diretório | História | Conteúdo |
 |---|---|---|
-| [`messaging/`](messaging/README.md) | US-F4-02 | Tópicos SNS FIFO por produtor, filas SQS FIFO por consumidor com DLQ, assinaturas filtradas por `type`, policy IAM dos nodes, alarmes de DLQ e contrato em SSM |
 | [`gateway/`](gateway/) | US-F3-02 / US-F4-05 | AWS API Gateway (HTTP API): rota `/auth` na Lambda, Lambda Authorizer de JWT, VPC Link → **NLB interno único** com um listener por microsserviço (NodePort), rotas por prefixo, throttling, CORS e access logs |
 | [`observability/`](observability/README.md) | US-F3-10 | Agente Datadog (Helm values), alternativa OSS Prometheus/Grafana e monitores sintéticos de uptime (Terraform) |
 | [`cluster/`](cluster/) | US-F3-05 | VPC multi-AZ, cluster EKS + managed node group (LabRole), add-ons (`metrics-server` p/ HPA), SG do VPC Link |
