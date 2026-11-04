@@ -1,10 +1,14 @@
 # Stage 03 — API Gateway: authorizer, integracoes e rotas.
 #
-# Politica de rotas (espelha os endpoints @Public() do monolito):
+# Politica de rotas (espelha os endpoints @Public() dos servicos):
 #   publicas   -> POST /auth (Lambda CPF), /health*, status de OS por numero,
-#                 webhooks de aprovacao (protegidos por token/HMAC na aplicacao)
-#   sensiveis  -> todo o resto (ANY /{proxy+}) exige JWT validado pelo
-#                 Lambda Authorizer antes de encaminhar ao EKS.
+#                 POST /webhooks/mercadopago (assinatura validada no Billing)
+#   sensiveis  -> prefixos de cada servico (var.services) + catch-all
+#                 (ANY /{proxy+}) exigem JWT validado pelo Lambda Authorizer
+#                 antes de encaminhar ao EKS.
+# Chamadas ENTRE os servicos (OS -> Execucao/Billing e os callbacks de volta)
+# NAO passam pelo gateway: vao direto pelo DNS interno do cluster com JWT de
+# servico (RFC-0008, docs/contratos/http-interno.md no hub).
 
 # ── Authorizer: a propria Lambda de CPF valida o JWT (US-F3-01) ──────────────
 

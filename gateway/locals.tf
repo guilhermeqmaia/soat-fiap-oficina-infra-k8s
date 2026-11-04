@@ -7,17 +7,20 @@ locals {
 
   # Rotas publicas (sem authorizer) por servico — espelham os endpoints
   # @Public() de cada um. O path e repassado como recebido (HTTP_PROXY).
+  # Alem do healthcheck (uptime/smoke), so DUAS rotas de negocio sao publicas:
+  # o status da OS por numero (cliente acompanha sem login) e o webhook do
+  # Mercado Pago. Os webhooks de aprovacao por e-mail da Fase 2/3 sairam do OS
+  # Service na US-F4-06 (a aprovacao agora e POST /orcamentos/{numero}/aprovar
+  # no Billing, com JWT de CLIENTE).
   public_routes = {
     os = [
       "GET /health",
       "GET /health/ready",
       "GET /ordens-servico/numero/{numero}/status",
-      "POST /webhooks/ordens-servico/{id}/aprovacao",
-      "GET /webhooks/ordens-servico/{id}/aprovar",
-      "GET /webhooks/ordens-servico/{id}/rejeitar",
     ]
     billing = [
       # Mercado Pago chama sem JWT; o Billing valida a assinatura x-signature (ADR-0012).
+      # Rota mais especifica que "ANY /webhooks/{proxy+}" (protegida), logo vence.
       "POST /webhooks/mercadopago",
     ]
     execucao = []
