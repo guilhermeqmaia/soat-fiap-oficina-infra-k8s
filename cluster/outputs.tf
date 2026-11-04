@@ -59,3 +59,8 @@ output "auth_lambda_security_group_id" {
   description = "SG da Lambda de auth por CPF — entrada security_group_ids do repo auth-lambda (var SECURITY_GROUP_IDS no CI)."
   value       = aws_security_group.auth_lambda.id
 }
+
+output "dynamodb_vpc_endpoint_id" {
+  description = "VPC Gateway Endpoint do DynamoDB (rota nas subnets privadas; policy restrita a tabela da Execucao)."
+  value       = aws_vpc_endpoint.dynamodb.id
+}

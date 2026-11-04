@@ -75,3 +75,9 @@ variable "log_retention_days" {
   type        = number
   default     = 7
 }
+
+variable "dynamodb_table_name" {
+  description = "Nome da tabela DynamoDB do Execucao Service (criada no repo infra-db, stage dynamodb). Unica tabela que a policy do VPC Gateway Endpoint libera (endpoints.tf)."
+  type        = string
+  default     = "oficina-execucao"
+}
