@@ -27,7 +27,7 @@ locals {
     billing_comandos_de_os = {
       queue = "billing_comandos"
       topic = "os"
-      types = ["billing.gerar-orcamento", "billing.cancelar-orcamento"]
+      types = ["billing.gerar-orcamento", "billing.cobrar", "billing.cancelar-orcamento"]
     }
     os_eventos_de_execucao = {
       queue = "os_eventos"
@@ -37,12 +37,12 @@ locals {
     os_eventos_de_billing = {
       queue = "os_eventos"
       topic = "billing"
-      types = ["billing.orcamento-gerado", "billing.orcamento-aprovado", "billing.orcamento-rejeitado", "billing.pagamento-aprovado", "billing.pagamento-recusado", "billing.orcamento-cancelado"]
+      types = ["billing.orcamento-gerado", "billing.orcamento-aprovado", "billing.orcamento-rejeitado", "billing.cobranca-criada", "billing.pagamento-aprovado", "billing.pagamento-recusado", "billing.orcamento-cancelado"]
     }
     notificacao_de_billing = {
       queue = "notificacao_eventos"
       topic = "billing"
-      types = ["billing.orcamento-gerado", "billing.orcamento-aprovado", "billing.pagamento-aprovado", "billing.pagamento-recusado"]
+      types = ["billing.orcamento-gerado", "billing.orcamento-aprovado", "billing.cobranca-criada", "billing.pagamento-aprovado", "billing.pagamento-recusado"]
     }
     notificacao_de_os = {
       queue = "notificacao_eventos"
