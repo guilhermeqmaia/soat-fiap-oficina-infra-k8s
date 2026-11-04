@@ -15,3 +15,4 @@
 # node_desired_size   = 2
 # node_min_size       = 2
 # node_max_size       = 4
+# dynamodb_table_name = "oficina-execucao"   # tabela da Execucao (repo infra-db) liberada no VPC endpoint

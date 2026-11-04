@@ -10,7 +10,10 @@ Kubernetes platform of the Oficina Mecânica system.
   **VPC Link** to the internal ALB, throttling, CORS, JSON access logs.
   Done (US-F3-02).
 - `cluster/` — **Amazon EKS**: VPC (public/private subnets, NAT, multi-AZ),
-  managed node group, metrics-server, AWS Load Balancer Controller, IRSA.
+  **VPC Gateway Endpoint for DynamoDB** (`endpoints.tf`, private route
+  table, policy restricted to the Execução table `oficina-execucao` from
+  repo infra-db — no NAT, zero cost), managed node group, metrics-server,
+  AWS Load Balancer Controller, IRSA.
   To do: `docs/user-stories/f3-05-terraform-cluster-kubernetes.md`
   (use the `/implement-story` skill).
 
@@ -18,6 +21,8 @@ Kubernetes platform of the Oficina Mecânica system.
 
 - **Only the API Gateway is public.** Everything else (EKS, internal ALB, RDS,
   Lambda) lives inside the VPC with no public exposure — no gateway bypass.
+  DynamoDB (regional service) is reached only through the VPC Gateway
+  Endpoint in `cluster/endpoints.tf`, never via the NAT (decision 04/11/2026).
 - The gateway reaches the app through a **VPC Link → internal ALB listener**
   (produced by the cluster/US-F3-06 work; consumed by `gateway/` variables).
 - HTTP API (v2), not REST API: access logs without the account-level
