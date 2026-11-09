@@ -21,7 +21,7 @@ flowchart LR
     GW -->|POST /auth| L["Lambda de CPF<br/>(repo 1)"]
     GW -->|VPC Link| APP["Aplicação NestJS<br/>(repo 4)"]
     APP --> DB[("RDS PostgreSQL<br/>(repo 3)")]
-    APP -->|VPC Gateway Endpoint<br/>(este repo, sem NAT)| DDB[("DynamoDB oficina-execucao<br/>(repo 3)")]
+    APP -->|VPC Gateway Endpoint<br/>(este repo, sem NAT)| DDB[("DynamoDB oficina-*<br/>4 tabelas (repo 3)")]
     L --> DB
     style GW fill:#e3f2fd,stroke:#1565c0,stroke-width:3px
 ```

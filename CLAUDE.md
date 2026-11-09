@@ -11,8 +11,9 @@ Kubernetes platform of the Oficina Mecânica system.
   Done (US-F3-02).
 - `cluster/` — **Amazon EKS**: VPC (public/private subnets, NAT, multi-AZ),
   **VPC Gateway Endpoint for DynamoDB** (`endpoints.tf`, private route
-  table, policy restricted to the Execução table `oficina-execucao` from
-  repo infra-db — no NAT, zero cost), managed node group, metrics-server,
+  table, policy restricted to the 4 Execução tables `oficina-*` (prefix
+  `dynamodb_table_prefix`, same as repo infra-db and the service's
+  `DYNAMODB_TABLE_PREFIX`) — no NAT, zero cost), managed node group, metrics-server,
   AWS Load Balancer Controller, IRSA.
   To do: `docs/user-stories/f3-05-terraform-cluster-kubernetes.md`
   (use the `/implement-story` skill).

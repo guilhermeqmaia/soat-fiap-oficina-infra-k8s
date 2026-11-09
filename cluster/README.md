@@ -10,9 +10,11 @@ Provisiona a **rede da solução inteira** e o **cluster Kubernetes gerenciado**
   HPA — [ADR-0002](https://github.com/guilhermeqmaia/soat-fiap-oficina-os-service/blob/main/docs/arquitetura/adr/ADR-0002-hpa-autoescalonamento.md));
 - **SG do VPC Link** e liberação de tráfego interno da VPC até os nodes;
 - **VPC Gateway Endpoint para o DynamoDB** (`endpoints.tf`): rota nas subnets
-  privadas para a tabela `oficina-execucao` do Execução Service (repo
-  infra-db) sem passar pelo NAT, com **política do endpoint** restrita a essa
-  tabela (decisão do time de 04/11/2026). Tipo *Gateway* = custo zero.
+  privadas para as 4 tabelas do Execução Service (repo infra-db:
+  `oficina-execucoes`, `oficina-servicos`, `oficina-produtos`,
+  `oficina-movimentacoes_estoque`) sem passar pelo NAT, com **política do
+  endpoint** restrita a `table/<dynamodb_table_prefix>*` e seus índices
+  (decisão do time de 04/11/2026). Tipo *Gateway* = custo zero.
 
 ## Topologia
 
@@ -33,12 +35,12 @@ Provisiona a **rede da solução inteira** e o **cluster Kubernetes gerenciado**
 │            rt-private│ (rota pl-xxxx, sem NAT)                  │
 │            ┌─────────▼──────────┐                               │
 │            │ VPC Gateway        │                               │
-│            │ Endpoint DynamoDB  │  policy: só table/oficina-    │
-│            └─────────┬──────────┘  execucao (+ index/*)         │
+│            │ Endpoint DynamoDB  │  policy: só table/oficina-*   │
+│            └─────────┬──────────┘  (4 tabelas + index/*)        │
 └──────────────────────┼──────────────────────────────────────────┘
               ┌────────▼────────┐
               │ DynamoDB        │  regional (repo 3) — só se "entra"
-              │ oficina-execucao│  nele por endpoint; o RDS é instância
+              │ oficina-*       │  nele por endpoint; o RDS é instância
               └─────────────────┘  e por isso mora na subnet privada
 ```
 
@@ -90,7 +92,7 @@ kubectl top nodes          # metrics-server respondendo (HPA ok)
 | `vpc_link_security_group_id` | `gateway/` (`vpc_link_security_group_ids`) |
 | `auth_lambda_security_group_id` | repo **auth-lambda** (`security_group_ids`; var `SECURITY_GROUP_IDS` no CI) |
 | `vpc_id` / `vpc_cidr` | repo **infra-db** (SG do RDS: ingress só da VPC) |
-| `dynamodb_vpc_endpoint_id` | informativo — o Execução Service (repo app) usa o endpoint do DynamoDB da região normalmente; a rota do endpoint na `rt-private` desvia o tráfego do NAT. `dynamodb_table_name` deve bater com a tabela criada no repo **infra-db** |
+| `dynamodb_vpc_endpoint_id` | informativo — o Execução Service (repo app) usa o endpoint do DynamoDB da região normalmente; a rota do endpoint na `rt-private` desvia o tráfego do NAT. `dynamodb_table_prefix` deve bater com o `dynamodb_table_prefix` do repo **infra-db** (4 tabelas) e com `DYNAMODB_TABLE_PREFIX` do execucao-service |
 | `cluster_name` / `kubeconfig_command` | repo **app** (deploy US-F3-06, CI/CD US-F3-08) |
 | listener ARN do NLB interno | criado pelo Service do app (US-F3-06); obtido via `aws elbv2 describe-listeners` e passado ao `gateway/` (`backend_listener_arn`) |
 
