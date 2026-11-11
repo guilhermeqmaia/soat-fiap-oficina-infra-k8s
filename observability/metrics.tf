@@ -11,3 +11,14 @@ resource "datadog_metric_tag_configuration" "latencia" {
   include_percentiles = true
   tags                = ["route", "method", "status", "kube_namespace", "pod_name"]
 }
+
+# p95 entre servicos (US-F4-16): painel "Latencia p95 por par origem -> destino"
+# e monitor latencia_entre_servicos.
+resource "datadog_metric_tag_configuration" "latencia_http_interno" {
+  count = local.habilitado ? 1 : 0
+
+  metric_name         = "oficina.http_interno_duracao_seconds"
+  metric_type         = "distribution"
+  include_percentiles = true
+  tags                = ["origem", "destino", "rota", "status", "service", "kube_namespace"]
+}

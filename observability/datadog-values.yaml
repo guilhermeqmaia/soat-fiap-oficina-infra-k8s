@@ -60,6 +60,15 @@ datadog:
               - oficina_integracoes: integracoes
               - oficina_os_tempo_no_status_seconds: os_tempo_no_status_seconds
               - oficina_http_request_duration_seconds: http_request_duration_seconds
+              # Fluxo distribuido (US-F4-16): saga do OS Service, chamadas HTTP
+              # entre servicos e callbacks (dashboard "Oficina — Fluxo distribuído").
+              - oficina_os_saga_passos: os_saga_passos
+              - oficina_os_saga_passo_duracao_seconds: os_saga_passo_duracao_seconds
+              - oficina_os_sagas: os_sagas
+              - oficina_os_sagas_paradas: os_sagas_paradas
+              - oficina_http_interno: http_interno
+              - oficina_http_interno_duracao_seconds: http_interno_duracao_seconds
+              - oficina_callbacks: callbacks
 
 clusterAgent:
   enabled: true
