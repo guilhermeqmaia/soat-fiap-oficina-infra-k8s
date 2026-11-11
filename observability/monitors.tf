@@ -164,3 +164,185 @@ resource "datadog_monitor" "pods_crashloop" {
 # monitores rejeita criar/alterar monitores de sintetico diretamente
 # ("use Synthetics API instead"), entao a mensagem/runbook ficam no teste.
 # ---------------------------------------------------------------------------
+
+# ===========================================================================
+# FLUXO DISTRIBUIDO (US-F4-16) — saga do OS Service e chamadas HTTP entre os
+# servicos (RFC-0008). Sem alertas de fila/DLQ: o transporte e HTTP direto.
+# Cada monitor linka o runbook versionado no os-service (docs/runbooks/).
+# ===========================================================================
+variable "saga_alerta_parada_min" {
+  description = "Minutos que oficina_os_sagas_paradas precisa ficar > 0 para alertar. Use o mesmo valor de SAGA_ALERTA_PARADA_MIN do os-service (padrao 60). Janelas aceitas pelo Datadog: 5, 10, 15, 30, 60, 120 ou 240."
+  type        = number
+  default     = 60
+
+  validation {
+    condition     = contains([5, 10, 15, 30, 60, 120, 240], var.saga_alerta_parada_min)
+    error_message = "saga_alerta_parada_min deve ser 5, 10, 15, 30, 60, 120 ou 240 (janelas de avaliacao do Datadog)."
+  }
+}
+
+locals {
+  runbooks           = "https://github.com/guilhermeqmaia/soat-fiap-oficina-os-service/blob/main/docs/runbooks"
+  janela_saga_parada = var.saga_alerta_parada_min >= 60 ? "last_${floor(var.saga_alerta_parada_min / 60)}h" : "last_${var.saga_alerta_parada_min}m"
+  tags_fluxo         = ["projeto:oficina-mecanica", "fase:4", "tipo:fluxo-distribuido"]
+}
+
+# ---------------------------------------------------------------------------
+# Saga parada: a gauge ja conta sagas sem avancar ha SAGA_ALERTA_PARADA_MIN e,
+# na hora, as que tiveram chamada nao entregue (historico `chamada-falhou`).
+# min() na janela: so alerta se ficou > 0 o tempo todo (sem flapping).
+# ---------------------------------------------------------------------------
+resource "datadog_monitor" "saga_parada" {
+  count = local.habilitado ? 1 : 0
+
+  name  = "[CRITICO] Saga de OS parada"
+  type  = "query alert"
+  query = "min(${local.janela_saga_parada}):default_zero(max:oficina.os_sagas_paradas{*}) > 0"
+
+  message = <<-EOT
+    {{value}} saga(s) de OS sem avancar ha mais de ${var.saga_alerta_parada_min} min
+    (ou com chamada a Execucao/Billing nao entregue).
+
+    **O que significa:** a OS esta presa num passo da saga — o participante nao
+    respondeu, uma compensacao nao foi confirmada ou um callback se perdeu.
+
+    **Runbook:** ${local.runbooks}/saga-parada.md
+    1. `GET /ordens-servico/numero/<n>/saga` -> passo e ultimas entradas do historico
+    2. Historico com `chamada-falhou`: resolver o participante e
+       `POST /admin/sagas/<n>/reprocessar` (${local.runbooks}/saga-reprocessar.md)
+    3. Nunca editar `saga_os` a mao
+    ${local.destino}
+  EOT
+
+  monitor_thresholds {
+    critical = 0
+  }
+
+  tags = local.tags_fluxo
+}
+
+# ---------------------------------------------------------------------------
+# Retry esgotado: uma chamada do OS a Execucao/Billing falhou 3x (5xx/timeout/rede).
+# ---------------------------------------------------------------------------
+resource "datadog_monitor" "retry_esgotado" {
+  count = local.habilitado ? 1 : 0
+
+  name  = "[CRITICO] Chamada entre servicos com retry esgotado ({{destino.name}})"
+  type  = "query alert"
+  query = "sum(last_5m):default_zero(sum:oficina.http_interno.count{resultado:esgotado} by {origem,destino}.as_count()) > 0"
+
+  message = <<-EOT
+    {{value}} chamada(s) de {{origem.name}} para {{destino.name}} esgotaram as 3 tentativas
+    nos ultimos 5 minutos.
+
+    **O que significa:** o destino esta fora, lento (> 5 s) ou respondendo 5xx. A
+    saga da OS ficou no passo com `chamada-falhou` e vai aparecer em "Saga parada".
+
+    **Runbook:** ${local.runbooks}/retry-esgotado.md
+    1. Dashboard "Oficina — Fluxo distribuído" -> chamadas por rota e resultado
+    2. `kubectl -n oficina get pods` e `/health/ready` do destino
+    3. Resolvido o destino, reprocessar as sagas afetadas
+    ${local.destino}
+  EOT
+
+  monitor_thresholds {
+    critical = 0
+  }
+
+  tags = local.tags_fluxo
+}
+
+# ---------------------------------------------------------------------------
+# Callback com 409 repetido: conflito de versao persistente na OS/saga.
+# ---------------------------------------------------------------------------
+resource "datadog_monitor" "callback_conflito_repetido" {
+  count = local.habilitado ? 1 : 0
+
+  name  = "[AVISO] Callbacks recebendo 409 repetidamente ({{type.name}})"
+  type  = "query alert"
+  query = "sum(last_15m):default_zero(sum:oficina.callbacks.count{resultado:conflito} by {type}.as_count()) > 3"
+
+  message = <<-EOT
+    {{value}} callbacks `{{type.name}}` responderam 409 nos ultimos 15 minutos.
+
+    **O que significa:** o OS refez a transacao 3x e ainda houve conflito de versao
+    — concorrencia anormal na mesma OS (callback duplicado em rajada, varredor de
+    timeouts e callback ao mesmo tempo). O participante repete; se desistir, a saga para.
+
+    **Runbook:** ${local.runbooks}/callback-conflito-repetido.md
+    1. Logs `callback recebido` com `resultado:conflito` -> `correlation_id` das OS
+    2. `GET /ordens-servico/numero/<n>/saga` para cada uma
+    ${local.destino}
+  EOT
+
+  monitor_thresholds {
+    critical = 3
+    warning  = 1
+  }
+
+  tags = local.tags_fluxo
+}
+
+# ---------------------------------------------------------------------------
+# Latencia p95 entre servicos > 2 s (inclui as retentativas do cliente do kit).
+# ---------------------------------------------------------------------------
+resource "datadog_monitor" "latencia_entre_servicos" {
+  count = local.habilitado ? 1 : 0
+
+  name  = "[AVISO] Latencia p95 entre servicos acima de 2 s ({{origem.name}} -> {{destino.name}})"
+  type  = "query alert"
+  query = "avg(last_10m):p95:oficina.http_interno_duracao_seconds{*} by {origem,destino} > ${local.limite_p95_interno}"
+
+  message = <<-EOT
+    p95 de {{origem.name}} -> {{destino.name}} em {{value}} s (limite ${local.limite_p95_interno} s).
+
+    **O que significa:** o destino esta lento ou as chamadas estao precisando de
+    retentativa (o timeout por tentativa e 5 s). A requisicao do usuario que
+    disparou a saga fica lenta junto.
+
+    **Runbook:** ${local.runbooks}/latencia-entre-servicos.md
+    1. Dashboard "Oficina — Fluxo distribuído" -> p95 por par e chamadas por rota
+    2. Trace no APM filtrando `correlation_id` de uma OS lenta
+    ${local.destino}
+  EOT
+
+  monitor_thresholds {
+    critical = local.limite_p95_interno
+    warning  = 1
+  }
+
+  tags = local.tags_fluxo
+}
+
+# ---------------------------------------------------------------------------
+# 5xx por servico (os-service, billing-service, execucao-service): label `service`
+# que o MetricsModule do kit poe em toda serie.
+# ---------------------------------------------------------------------------
+resource "datadog_monitor" "erros_5xx_por_servico" {
+  count = local.habilitado ? 1 : 0
+
+  name  = "[CRITICO] 5xx no {{service.name}}"
+  type  = "query alert"
+  query = "sum(last_10m):default_zero(sum:oficina.http_request_duration_seconds.count{status:5*} by {service}.as_count()) > 5"
+
+  message = <<-EOT
+    {{value}} respostas 5xx do {{service.name}} nos ultimos 10 minutos.
+
+    **O que significa:** excecao nao tratada no servico. Quando o servico e
+    destino de chamadas da saga, as chamadas do OS repetem e podem esgotar
+    (ver "retry esgotado").
+
+    **Runbook:** ${local.runbooks}/erros-5xx-por-servico.md
+    1. Dashboard "Oficina — Fluxo distribuído" -> 5xx por servico; "Saude tecnica" -> 5xx por rota
+    2. Logs do servico com `statusCode:5*` -> `correlation_id` / `trace_id`
+    3. Banco do servico (`/health/ready`): RDS ou DynamoDB
+    ${local.destino}
+  EOT
+
+  monitor_thresholds {
+    critical = 5
+    warning  = 2
+  }
+
+  tags = local.tags_fluxo
+}
