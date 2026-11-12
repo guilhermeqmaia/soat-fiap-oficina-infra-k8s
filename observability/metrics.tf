@@ -20,5 +20,5 @@ resource "datadog_metric_tag_configuration" "latencia_http_interno" {
   metric_name         = "oficina.http_interno_duracao_seconds"
   metric_type         = "distribution"
   include_percentiles = true
-  tags                = ["origem", "destino", "rota", "status", "service", "kube_namespace"]
+  tags                = ["origem", "destino", "rota", "resultado", "service", "kube_namespace"]
 }
