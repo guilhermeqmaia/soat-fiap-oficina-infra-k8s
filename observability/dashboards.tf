@@ -170,3 +170,174 @@ output "dashboard_tecnico_url" {
   description = "URL do dashboard tecnico."
   value       = nonsensitive(local.habilitado ? datadog_dashboard.tecnico[0].url : "")
 }
+
+# ---------------------------------------------------------------------------
+# Dashboard do FLUXO DISTRIBUIDO (US-F4-16) — saga orquestrada pelo OS Service
+# e chamadas HTTP diretas entre os servicos (RFC-0008: sem filas/DLQ).
+# Fontes (os-service /metrics, mapeadas em datadog-values.yaml):
+#   oficina_os_saga_passos_total, oficina_os_saga_passo_duracao_seconds,
+#   oficina_os_sagas, oficina_os_sagas_paradas, oficina_http_interno_total,
+#   oficina_http_interno_duracao_seconds, oficina_callbacks_total.
+# ---------------------------------------------------------------------------
+locals {
+  # Contadores viram <nome>.count; histogramas viram distribuicoes (media =
+  # sum/count; p95 so onde metrics.tf habilita percentis); gauges sem sufixo.
+  m_saga_passos      = "oficina.os_saga_passos.count"
+  m_saga_duracao     = "oficina.os_saga_passo_duracao_seconds"
+  m_sagas            = "oficina.os_sagas"
+  m_sagas_paradas    = "oficina.os_sagas_paradas"
+  m_http_interno     = "oficina.http_interno.count"
+  m_http_interno_dur = "oficina.http_interno_duracao_seconds"
+  m_callbacks        = "oficina.callbacks.count"
+  # Segundos — mesmo limite do monitor latencia_entre_servicos.
+  limite_p95_interno = 2
+}
+
+resource "datadog_dashboard" "fluxo_distribuido" {
+  count = local.habilitado ? 1 : 0
+
+  title       = "Oficina — Fluxo distribuído"
+  description = "Saga da OS (passos, tempo, compensacoes, sagas paradas), chamadas HTTP entre servicos (p95 e erro por origem->destino) e callbacks (US-F4-16)."
+  layout_type = "ordered"
+  tags        = ["team:oficina-mecanica"]
+
+  # --- Saga ----------------------------------------------------------------
+  widget {
+    query_value_definition {
+      title = "Sagas paradas agora"
+      request {
+        q          = "max:${local.m_sagas_paradas}{*}"
+        aggregator = "last"
+        conditional_formats {
+          comparator = ">"
+          value      = 0
+          palette    = "white_on_red"
+        }
+        conditional_formats {
+          comparator = "<="
+          value      = 0
+          palette    = "white_on_green"
+        }
+      }
+      precision = 0
+    }
+  }
+
+  widget {
+    timeseries_definition {
+      title = "Sagas por status (gauge)"
+      request {
+        q            = "max:${local.m_sagas}{*} by {status}"
+        display_type = "line"
+      }
+    }
+  }
+
+  widget {
+    timeseries_definition {
+      title = "Sagas por passo (eventos processados)"
+      request {
+        q            = "sum:${local.m_saga_passos}{*} by {passo}.as_count()"
+        display_type = "bars"
+      }
+    }
+  }
+
+  widget {
+    timeseries_definition {
+      title = "Tempo medio por passo da saga"
+      # Media = soma / contagem (nao depende de percentil habilitado).
+      request {
+        q            = "sum:${local.m_saga_duracao}.sum{*} by {passo}.as_count() / sum:${local.m_saga_duracao}.count{*} by {passo}.as_count()"
+        display_type = "line"
+      }
+    }
+  }
+
+  widget {
+    timeseries_definition {
+      title = "Compensacoes (saga entrou em COMPENSANDO / terminou CANCELADA)"
+      request {
+        q            = "sum:${local.m_saga_passos}{resultado:compensando} by {passo}.as_count()"
+        display_type = "bars"
+      }
+      request {
+        q            = "sum:${local.m_saga_passos}{resultado:cancelada} by {passo}.as_count()"
+        display_type = "bars"
+      }
+    }
+  }
+
+  widget {
+    timeseries_definition {
+      title = "Sagas paradas (historico)"
+      request {
+        q            = "max:${local.m_sagas_paradas}{*}"
+        display_type = "area"
+      }
+    }
+  }
+
+  # --- Chamadas HTTP entre servicos ----------------------------------------
+  widget {
+    timeseries_definition {
+      title = "Latencia p95 por par origem -> destino"
+      request {
+        q            = "p95:${local.m_http_interno_dur}{*} by {origem,destino}"
+        display_type = "line"
+      }
+      marker {
+        display_type = "error dashed"
+        value        = "y = ${local.limite_p95_interno}"
+        label        = "alerta p95 > 2 s"
+      }
+    }
+  }
+
+  widget {
+    timeseries_definition {
+      title = "Taxa de erro por par origem -> destino (%) — esgotado + erro"
+      # `recusa` (409 de negocio) nao e erro de infraestrutura; fica no painel de resultados.
+      request {
+        q            = "(sum:${local.m_http_interno}{resultado:esgotado} by {origem,destino}.as_count() + sum:${local.m_http_interno}{resultado:erro} by {origem,destino}.as_count()) / sum:${local.m_http_interno}{*} by {origem,destino}.as_count() * 100"
+        display_type = "line"
+      }
+    }
+  }
+
+  widget {
+    timeseries_definition {
+      title = "Chamadas entre servicos por rota e resultado"
+      request {
+        q            = "sum:${local.m_http_interno}{*} by {destino,rota,resultado}.as_count()"
+        display_type = "bars"
+      }
+    }
+  }
+
+  # --- Callbacks e erros por servico ---------------------------------------
+  widget {
+    timeseries_definition {
+      title = "Callbacks por type e resultado"
+      request {
+        q            = "sum:${local.m_callbacks}{*} by {type,resultado}.as_count()"
+        display_type = "bars"
+      }
+    }
+  }
+
+  widget {
+    timeseries_definition {
+      title = "5xx por servico"
+      request {
+        q            = "sum:${local.m_latencia}.count{status:5*} by {service}.as_count()"
+        display_type = "bars"
+      }
+    }
+  }
+}
+
+output "dashboard_fluxo_distribuido_url" {
+  description = "URL do dashboard do fluxo distribuido (US-F4-16)."
+  value       = nonsensitive(local.habilitado ? datadog_dashboard.fluxo_distribuido[0].url : "")
+}
