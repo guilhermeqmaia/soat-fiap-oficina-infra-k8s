@@ -182,10 +182,12 @@ output "dashboard_tecnico_url" {
 locals {
   # Contadores viram <nome>.count; histogramas viram distribuicoes (media =
   # sum/count; p95 so onde metrics.tf habilita percentis); gauges sem sufixo.
-  m_saga_passos      = "oficina.os_saga_passos.count"
-  m_saga_duracao     = "oficina.os_saga_passo_duracao_seconds"
-  m_sagas            = "oficina.os_sagas"
-  m_sagas_paradas    = "oficina.os_sagas_paradas"
+  m_saga_passos   = "oficina.os_saga_passos.count"
+  m_saga_duracao  = "oficina.os_saga_passo_duracao_seconds"
+  m_sagas         = "oficina.os_sagas"
+  m_sagas_paradas = "oficina.os_sagas_paradas"
+  # Informativo (nao alerta): sagas esperando cliente (aprovacao/pagamento) ou mecanico.
+  m_sagas_aguardando = "oficina.os_sagas_aguardando_pessoa"
   m_http_interno     = "oficina.http_interno.count"
   m_http_interno_dur = "oficina.http_interno_duracao_seconds"
   m_callbacks        = "oficina.callbacks.count"
@@ -220,6 +222,16 @@ resource "datadog_dashboard" "fluxo_distribuido" {
         }
       }
       precision = 0
+    }
+  }
+
+  widget {
+    timeseries_definition {
+      title = "Sagas aguardando pessoa (cliente/mecanico) por passo"
+      request {
+        q            = "max:${local.m_sagas_aguardando}{*} by {passo}"
+        display_type = "bars"
+      }
     }
   }
 
