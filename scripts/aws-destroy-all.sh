@@ -54,9 +54,11 @@ if aws eks describe-cluster --name "$CLUSTER" >/dev/null 2>&1; then
   echo "== app: removendo namespace oficina"
   aws eks update-kubeconfig --name "$CLUSTER" >/dev/null
   kubectl delete namespace oficina --ignore-not-found --timeout=300s || true
+  # So os NLBs criados por Service LoadBalancer (Fase 3). O NLB unico da Fase 4
+  # ("<projeto>-svcs") e do stage gateway e sai no passo 2.
   for i in $(seq 1 24); do
-    n=$(aws elbv2 describe-load-balancers --query 'length(LoadBalancers)' --output text)
-    [ "$n" = "0" ] && break; echo "   aguardando NLB sumir ($n)..."; sleep 10
+    n=$(aws elbv2 describe-load-balancers --query "length(LoadBalancers[?LoadBalancerName!='${PROJECT_NAME:-oficina-mecanica}-svcs'])" --output text)
+    [ "$n" = "0" ] && break; echo "   aguardando NLB do Service sumir ($n)..."; sleep 10
   done
 fi
 
@@ -125,12 +127,20 @@ else echo "   state vazio"; fi
 echo "== ecr"; for r in $(aws ecr describe-repositories --query 'repositories[].repositoryName' --output text); do
   aws ecr delete-repository --repository-name "$r" --force >/dev/null && echo "   $r"; done
 echo "== secrets manager (inclui os ja agendados: sem --include-planned-deletion o list nao os mostra)"
-for s in $(aws secretsmanager list-secrets --include-planned-deletion --query 'SecretList[].ARN' --output text); do
+# Secrets com a tag oficina:preservar=true ficam (ex.: oficina/billing/mercado-pago, criado a
+# mao com as credenciais do sandbox; tem tambem uma policy que nega DeleteSecret).
+for s in $(aws secretsmanager list-secrets --include-planned-deletion \
+    --query "SecretList[?!(Tags[?Key=='oficina:preservar' && Value=='true'])].ARN" --output text); do
   aws secretsmanager delete-secret --secret-id "$s" --force-delete-without-recovery >/dev/null && echo "   $s"; done
 echo "== cloudwatch log groups"; for g in $(aws logs describe-log-groups --query 'logGroups[].logGroupName' --output text); do
   aws logs delete-log-group --log-group-name "$g" && echo "   $g"; done
 rm -rf "$WORK" "$HERE"/*/backend_override.tf
-echo "pronto. Ficam so: bucket do state, tabela de lock, role OIDC e budget (custo ~0)."
+# Sem cluster, o CD dos servicos deve parar no push do ECR (senao fica vermelho a cada merge).
+# O aws-deploy-all.sh grava a var de novo no proximo ciclo.
+echo "== EKS_CLUSTER_NAME dos repos de servico"
+for r in soat-fiap-oficina-os-service soat-fiap-oficina-billing-service soat-fiap-oficina-execucao-service; do
+  gh variable delete EKS_CLUSTER_NAME -R "$OWNER/$r" >/dev/null 2>&1 && echo "   $r"; done
+echo "pronto. Ficam so: bucket do state, tabela de lock, role OIDC, budget e secrets marcados para preservar (custo ~0)."
 echo "Sobras cobraveis? (tudo deve ser 0):"
 for q in "ec2 describe-network-interfaces --query length(NetworkInterfaces)" "ec2 describe-nat-gateways --filter Name=state,Values=available --query length(NatGateways)" "ec2 describe-addresses --query length(Addresses)" "elbv2 describe-load-balancers --query length(LoadBalancers)" "rds describe-db-instances --query length(DBInstances)" "eks list-clusters --query length(clusters)" "ec2 describe-volumes --query length(Volumes)"; do
   printf '   %-45s %s\n' "$(echo "$q" | cut -d' ' -f1-2)" "$(aws $q --output text)"; done
