@@ -62,7 +62,7 @@ O mesmo HTTP API passa a rotear **por prefixo** para três backends, todos atrá
 | Serviço | Listener | NodePort | Prefixos protegidos (JWT) | Rotas públicas |
 |---|---|---|---|---|
 | OS Service (`oficina-app`) | 3000 | 30080 | `/ordens-servico`, `/clientes`, `/veiculos`, `/usuario`, `/notificacoes`, `/auth/me`, `/admin` + catch-all `ANY /{proxy+}` (compat. Fase 3) | `GET /health*`, `GET /ordens-servico/numero/{numero}/status` |
-| Billing (`oficina-billing-service`) | 3001 | 30081 | `/orcamentos`, `/pagamentos`, `/webhooks` | `POST /webhooks/mercadopago` (assinatura `x-signature` validada no serviço) |
+| Billing (`oficina-billing-service`) | 3001 | 30081 | `/orcamentos`, `/pagamentos`, `/webhooks` | `POST /webhooks/mercadopago` (assinatura `x-signature` validada no serviço) · `GET /pagamento/sucesso\|falha\|pendente` (retorno do checkout) |
 | Execução (`oficina-execucao-service`) | 3002 | 30082 | `/execucao`, `/catalogo`, `/estoque` | — |
 
 Cada prefixo gera `ANY /p` e `ANY /p/{proxy+}`. `POST /auth` continua na Lambda. Swagger (`/api`) de cada serviço **não** é exposto. As rotas públicas são mais específicas que os prefixos, então vencem na resolução do HTTP API (ex.: `POST /webhooks/mercadopago` é pública mesmo com `ANY /webhooks/{proxy+}` protegida). Para alterar o mapa, edite `var.services` em [`variables.tf`](variables.tf) (prefixos protegidos) e `local.public_routes` em [`locals.tf`](locals.tf) (rotas `@Public()`).
@@ -88,6 +88,7 @@ devem apontar para `/health`, nunca para a raiz.
 | `GET /health`, `GET /health/ready` | EKS | pública (healthcheck) |
 | `GET /ordens-servico/numero/{numero}/status` | EKS (OS) | pública (cliente acompanha a OS) |
 | `POST /webhooks/mercadopago` | EKS (Billing) | pública (assinatura do Mercado Pago validada no serviço) |
+| `GET /pagamento/sucesso`, `/falha`, `/pendente` | EKS (Billing) | pública (página de retorno do checkout; só informativa) |
 | `ANY /{prefixo}` e `ANY /{prefixo}/{proxy+}` (tabela acima) | EKS (serviço do prefixo) | **JWT via Lambda Authorizer** |
 | `ANY /{proxy+}` (todo o resto) | EKS (OS) | **JWT via Lambda Authorizer** |
 
