@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
-# Sobe TODA a Fase 3 do zero disparando os workflows de CD dos 4 repos e
+# Sobe TODA a Fase 4 do zero (base da Fase 3 + Billing e Execucao) disparando os workflows de CD dos repos e
 # fechando os contratos entre eles (outputs -> GitHub Variables). As etapas
 # independentes rodam em paralelo:
 #
 #   cluster (VPC+EKS, ~16 min) ─┐
-#   RDS (~14 min) -> Lambda (~3) ─┴─> app (~4) -> gateway (~3) -> app c/ URL (~3) -> seeds -> smoke
+#   RDS x2 + DynamoDB (~14 min) -> Lambda (~3) ─┴─> OS + Billing + Execucao (~5, em paralelo)
+#     -> gateway (~3) -> OS e Billing c/ URL (~3) -> seeds -> smoke
+# O Billing so e implantado se a var MP_SECRET_ID existir no repo dele (secret JSON
+# do Mercado Pago no Secrets Manager); sem ela o script avisa e segue sem o Billing.
 #
 # O RDS e a Lambda so precisam da VPC/subnets/SGs, que o stage cluster cria nos
 # primeiros ~2 min — o script le esses IDs direto da AWS (tags) sem esperar o
@@ -105,15 +108,27 @@ setvar "$R_LAMBDA" SUBNET_IDS "$SUBNETS"; setvar "$R_LAMBDA" SECURITY_GROUP_IDS 
 setvar "$R_K8S" VPC_LINK_SUBNET_IDS "$SUBNETS"; setvar "$R_K8S" VPC_LINK_SECURITY_GROUP_IDS "[\"$VPC_LINK_SG\"]"
 setvar "$R_K8S" VPC_ID "$VPC_ID"; setvar "$R_K8S" EKS_CLUSTER_NAME "$CLUSTER"
 setvar "$R_APP" EKS_CLUSTER_NAME "$CLUSTER"
+setvar "$R_BILLING" EKS_CLUSTER_NAME "$CLUSTER"; setvar "$R_EXEC" EKS_CLUSTER_NAME "$CLUSTER"
+# A policy do DynamoDB (infra-db) e anexada a role dos nodes: no Academy e a LabRole,
+# na conta propria e a role criada pelo stage cluster (iam.tf), que nasce nos
+# primeiros minutos do apply. Sem NODE_ROLE_NAME a Execucao recebe AccessDenied.
+LAB_ROLE_ARN=$(gh variable get LAB_ROLE_ARN -R "$R_K8S" 2>/dev/null || true)
+if [ -n "$LAB_ROLE_ARN" ]; then NODE_ROLE="${LAB_ROLE_ARN##*/}"; else NODE_ROLE="$CLUSTER-node-role"; fi
+log "role dos nodes: $NODE_ROLE"
+for i in $(seq 1 60); do aws iam get-role --role-name "$NODE_ROLE" >/dev/null 2>&1 && break; sleep 10; done
+aws iam get-role --role-name "$NODE_ROLE" >/dev/null || { echo "erro: role $NODE_ROLE nao apareceu" >&2; exit 1; }
+setvar "$R_DB" NODE_ROLE_NAME "$NODE_ROLE"
 
 # --- 2. RDS (enquanto o EKS sobe) -------------------------------------------------
 if ! skip db; then
-  log "2/7 infra-db: RDS Multi-AZ (~14 min)"
+  log "2/7 infra-db: RDS do OS + RDS do Billing + DynamoDB da Execucao (~14 min)"
   run_wf "$R_DB" cd.yml -f action=apply
 fi
 DB_SECRET_ARN=$(tf_out "oficina-infra-db/$ENV.tfstate" secret_arn | tr -d '"'); DB_SECRET_NAME=$(tf_out "oficina-infra-db/$ENV.tfstate" secret_name | tr -d '"')
 log "contratos do banco"
 setvar "$R_LAMBDA" DB_SECRET_ID "$DB_SECRET_ARN"; setvar "$R_APP" DB_SECRET_ID "$DB_SECRET_NAME"
+BILLING_SECRET_ARN=$(tf_out "oficina-infra-db/$ENV.tfstate" service_secret_arns | python3 -c "import sys,json; print(json.load(sys.stdin).get('billing',''))")
+[ -n "$BILLING_SECRET_ARN" ] && setvar "$R_BILLING" DB_SECRET_ID "$BILLING_SECRET_ARN"
 
 # --- 3. Lambda (Terraform ja publica versao + alias) -----------------------------
 if ! skip lambda; then
@@ -124,14 +139,24 @@ FN=$(tf_out "oficina-auth-lambda/$ENV.tfstate" function_name | tr -d '"'); JWT_S
 ALIAS_ARN=$(aws lambda get-alias --function-name "$FN" --name "$ENV" --query AliasArn --output text)
 log "contratos da lambda"
 setvar "$R_APP" JWT_SECRET_ID "$JWT_SECRET_ARN"; setvar "$R_K8S" AUTH_LAMBDA_ARN "$ALIAS_ARN"; setvar "$R_LAMBDA" LAMBDA_FUNCTION_NAME "$FN"
+setvar "$R_BILLING" JWT_SECRET_ID "$JWT_SECRET_ARN"; setvar "$R_EXEC" JWT_SECRET_ID "$JWT_SECRET_ARN"
+COM_BILLING=true
+if [ -z "$(gh variable get MP_SECRET_ID -R "$R_BILLING" 2>/dev/null || true)" ]; then
+  COM_BILLING=false
+  echo "   AVISO: var MP_SECRET_ID ausente em $R_BILLING — o Billing NAO sera implantado (ver docs/entrega-fase-4.md, secao 9)" >&2
+fi
 
 # --- 4. App no EKS (precisa do cluster pronto) ------------------------------------
 # Retomada com --from: o cluster pode ter sido disparado por uma execucao anterior.
 [ -n "$CLUSTER_RUN" ] || CLUSTER_RUN=$(gh run list -R "$R_K8S" --workflow cd.yml --limit 1 --json databaseId,status -q '.[] | select(.status!="completed") | .databaseId')
 if [ -n "$CLUSTER_RUN" ]; then log "aguardando o cluster terminar"; wait_wf "$R_K8S" "$CLUSTER_RUN"; fi
 if ! skip app; then
-  log "4/7 app: build + ECR + EKS + migrations (~4 min)"
-  run_wf "$R_APP" cd-aws.yml
+  log "4/7 servicos: OS + Execucao (+ Billing) — build + ECR + EKS (+ migrations), em paralelo (~5 min)"
+  RUN_OS=$(dispatch_wf "$R_APP" cd-aws.yml)
+  RUN_EXEC=$(dispatch_wf "$R_EXEC" cd-aws.yml)
+  RUN_BILLING=""; $COM_BILLING && RUN_BILLING=$(dispatch_wf "$R_BILLING" cd-aws.yml)
+  wait_wf "$R_APP" "$RUN_OS"; wait_wf "$R_EXEC" "$RUN_EXEC"
+  [ -n "$RUN_BILLING" ] && wait_wf "$R_BILLING" "$RUN_BILLING"
 fi
 aws eks update-kubeconfig --name "$CLUSTER" >/dev/null
 # Transicao Fase 3 -> 4: enquanto o OS Service expuser Service LoadBalancer
@@ -153,11 +178,15 @@ if ! skip gateway; then
 fi
 GW=$(tf_out "oficina-infra-k8s/gateway/$ENV.tfstate" api_base_url | tr -d '"')
 log "URL publica: $GW"; setvar "$R_APP" GATEWAY_URL "$GW"
+# Retorno do checkout do Mercado Pago volta para o gateway.
+$COM_BILLING && setvar "$R_BILLING" MP_RETORNO_BASE_URL "$GW/pagamento"
 
 # --- 6. App de novo, com a URL publica (links de aprovacao, CORS) -----------------
 if ! skip url; then
-  log "6/7 app: redeploy com GATEWAY_URL (~3 min)"
-  run_wf "$R_APP" cd-aws.yml
+  log "6/7 OS (+ Billing): redeploy com a URL publica (~3 min)"
+  RUN_OS=$(dispatch_wf "$R_APP" cd-aws.yml)
+  RUN_BILLING=""; $COM_BILLING && RUN_BILLING=$(dispatch_wf "$R_BILLING" cd-aws.yml)
+  wait_wf "$R_APP" "$RUN_OS"; [ -n "$RUN_BILLING" ] && wait_wf "$R_BILLING" "$RUN_BILLING"
 fi
 
 # --- 6b. Observabilidade (US-F3-10) — opcional ------------------------------------
@@ -180,6 +209,29 @@ c=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$GW/auth" -H 'content-type: 
 c=$(curl -s -o /dev/null -w '%{http_code}' "$GW/clientes"); printf '   GET /clientes sem token -> %s (esperado 401)\n' "$c"; [ "$c" = 401 ] || ok=false
 if $SEED; then
   c=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$GW/auth" -H 'content-type: application/json' -d '{"cpf":"52998224725","senha":"admin123"}'); printf '   POST /auth admin -> %s (esperado 200)\n' "$c"; [ "$c" = 200 ] || ok=false
+fi
+if $SEED; then
+  log "seeds da Execucao: catalogo de servicos e pecas com estoque (SKU repetido = 409, ignorado)"
+  ADM=$(curl -s -X POST "$GW/auth" -H 'content-type: application/json' -d '{"cpf":"52998224725","senha":"admin123"}' \
+    | python3 -c "import sys,json; print(json.load(sys.stdin).get('accessToken',''))" 2>/dev/null || true)
+  if [ -n "$ADM" ]; then
+    post() { curl -s -o /dev/null -w '%{http_code}' -X POST "$GW$1" -H "authorization: Bearer $ADM" -H 'content-type: application/json' -d "$2"; }
+    for s in '{"nome":"Troca de oleo","precoBase":120}' '{"nome":"Revisao de freios","precoBase":250}' '{"nome":"Alinhamento e balanceamento","precoBase":150}'; do
+      printf '   POST /catalogo/servicos %s -> %s\n' "$s" "$(post /catalogo/servicos "$s")"
+    done
+    for p in '{"nome":"Oleo 5W30 (1L)","sku":"OLEO-5W30","preco":45,"quantidadeEstoque":40}' '{"nome":"Filtro de oleo","sku":"FILTRO-OLEO","preco":35,"quantidadeEstoque":20}' '{"nome":"Pastilha de freio (par)","sku":"PASTILHA-DIANT","preco":180,"quantidadeEstoque":10}'; do
+      printf '   POST /catalogo/produtos %s -> %s\n' "$p" "$(post /catalogo/produtos "$p")"
+    done
+    # O gateway encaminha cada prefixo ao servico certo (ADMIN pode listar nos dois).
+    c=$(curl -s -o /dev/null -w '%{http_code}' -H "authorization: Bearer $ADM" "$GW/execucao/ordens")
+    printf '   GET /execucao/ordens (admin) -> %s (esperado 200)\n' "$c"; [ "$c" = 200 ] || ok=false
+    if $COM_BILLING; then
+      c=$(curl -s -o /dev/null -w '%{http_code}' -H "authorization: Bearer $ADM" "$GW/orcamentos?clienteId=smoke")
+      printf '   GET /orcamentos?clienteId=smoke (admin) -> %s (esperado 200)\n' "$c"; [ "$c" = 200 ] || ok=false
+    fi
+  else
+    echo "   AVISO: sem token de admin; catalogo da Execucao nao semeado" >&2
+  fi
 fi
 $ok || { echo "smoke test FALHOU" >&2; exit 1; }
 log "PRONTO em $(( ($(date +%s)-START)/60 )) min — $GW"
