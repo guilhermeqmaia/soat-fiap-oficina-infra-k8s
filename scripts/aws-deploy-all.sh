@@ -47,7 +47,15 @@ BUCKET="${TF_STATE_BUCKET:-soat-oficina-tfstate-$ACCOUNT}"
 BRANCH="main"; [ "$ENV" = "prod" ] || BRANCH="homolog"
 START=$(date +%s)
 log() { printf '\n[%s +%dmin] %s\n' "$(date -u +%H:%M)" $(( ($(date +%s)-START)/60 )) "$*"; }
-setvar() { gh variable set "$2" -R "$1" --body "$3" >/dev/null && echo "   $1 :: $2 = $3"; }
+# A API de Variables do GitHub as vezes responde 503: ate 5 tentativas antes de desistir.
+setvar() {
+  local i
+  for i in 1 2 3 4 5; do
+    gh variable set "$2" -R "$1" --body "$3" >/dev/null 2>&1 && { echo "   $1 :: $2 = $3"; return 0; }
+    sleep $((i * 3))
+  done
+  echo "erro: nao consegui gravar $2 em $1" >&2; return 1
+}
 stages=(cluster db lambda app gateway url seed); idx() { local i=0; for s in "${stages[@]}"; do [ "$s" = "$1" ] && { echo $i; return; }; i=$((i+1)); done; echo 99; }
 skip() { [ "$(idx "$1")" -lt "$(idx "$FROM")" ]; }
 
