@@ -29,9 +29,16 @@ tf_obs() {
       -backend-config="bucket=$BUCKET" -backend-config="key=oficina-infra-k8s/observability/prod.tfstate" \
       -backend-config="region=${AWS_REGION:-us-east-1}" -backend-config="encrypt=true" >/dev/null
     GW="${GATEWAY_URL:-$(gh variable get GATEWAY_URL -R "$OWNER/soat-fiap-oficina-os-service" 2>/dev/null || true)}"
-    terraform "$1" -input=false -auto-approve \
-      -var "datadog_api_key=${DD_API_KEY:-}" -var "datadog_app_key=${DD_APP_KEY:-}" \
-      -var "gateway_url=$GW" -var "alert_email=${ALERT_EMAIL:-}" | grep -E "complete!|Error|dashboard_.*_url" || true
+    local vars=(-var "datadog_api_key=${DD_API_KEY:-}" -var "datadog_app_key=${DD_APP_KEY:-}"
+                -var "gateway_url=$GW" -var "alert_email=${ALERT_EMAIL:-}")
+    local saida; saida=$(terraform "$1" -input=false -auto-approve -no-color "${vars[@]}" 2>&1 || true)
+    if [ "$1" = apply ] && grep -q "metric that does not exist" <<<"$saida"; then
+      # Ambiente novo: a latencia entre servicos ainda nao tem amostra no Datadog.
+      saida=$(terraform apply -input=false -auto-approve -no-color "${vars[@]}" -var percentis_http_interno=false 2>&1 || true)
+      echo "   aviso: percentis da latencia entre servicos ficam para depois da primeira OS —"
+      echo "   rode 'scripts/aws-observability.sh datadog' de novo quando uma OS tiver passado pelos 3 servicos"
+    fi
+    grep -E "complete!|Error|dashboard_.*_url" <<<"$saida" || true
     rm -f backend_override.tf )
 }
 
