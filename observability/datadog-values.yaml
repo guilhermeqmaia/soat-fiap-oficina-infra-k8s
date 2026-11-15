@@ -66,6 +66,7 @@ datadog:
               - oficina_os_saga_passo_duracao_seconds: os_saga_passo_duracao_seconds
               - oficina_os_sagas: os_sagas
               - oficina_os_sagas_paradas: os_sagas_paradas
+              - oficina_os_sagas_aguardando_pessoa: os_sagas_aguardando_pessoa
               - oficina_http_interno: http_interno
               - oficina_http_interno_duracao_seconds: http_interno_duracao_seconds
               - oficina_callbacks: callbacks

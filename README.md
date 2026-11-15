@@ -81,12 +81,12 @@ Budget com alerta por e-mail, e grava `AWS_ROLE_ARN`/`TF_STATE_BUCKET`/
 
 ```bash
 # macOS: rode com `caffeinate -i <script>` — se o Mac dormir, o script congela entre os polls.
-scripts/aws-deploy-all.sh            # ~30 min do zero: cluster ∥ (RDS -> Lambda) -> app -> gateway -> app (URL) -> seeds -> smoke
+scripts/aws-deploy-all.sh            # ~30 min do zero: cluster ∥ (RDS x2 + DynamoDB -> Lambda) -> OS + Billing + Execucao -> gateway -> OS/Billing (URL) -> seeds -> smoke
 scripts/aws-deploy-all.sh --from app # retoma de uma etapa (cluster|db|lambda|app|gateway|url|seed)
 DD_API_KEY=... scripts/aws-deploy-all.sh          # idem + agente Datadog (ADR-0004); ou --observability prometheus (OSS, sem chave)
 scripts/aws-observability.sh datadog|prometheus|none  # instala/remove o coletor num cluster ja no ar
-scripts/aws-pause.sh                 # entre gravações: nodes -> 0 e RDS parado (~US$ 3,5/dia)
-scripts/aws-resume.sh                # ~8-10 min: religa RDS e nodes, espera NLB, smoke
+scripts/aws-pause.sh                 # entre gravações: 3 serviços -> 0, nodes -> 0 e as 2 instâncias RDS paradas
+scripts/aws-resume.sh                # ~8-10 min: religa RDS e nodes, sobe os 3 serviços, smoke pelo gateway
 scripts/aws-destroy-all.sh --yes     # ~25 min: ordem inversa; confere que nada cobrável sobrou
 ```
 
